@@ -1,0 +1,3 @@
+﻿{
+	"dependencies": [ "plog", "sqlite3" ]
+}
