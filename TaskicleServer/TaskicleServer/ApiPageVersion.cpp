@@ -26,7 +26,7 @@ struct PAGE_REQ_HEADER
 EckInlineNdCe BOOL PrhCheckCrc32(const PAGE_REQ_HEADER* pHdr) noexcept
 {
     if (pHdr->cbContent)
-        return eck::CalcCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent) == pHdr->crc32;
+        return eck::CalculateCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent) == pHdr->crc32;
     else
         return TRUE;
 }
@@ -58,7 +58,7 @@ static int PrhCompressContent(eck::CRefBin& rbBody, const eck::CRefBin& rbConten
         {
             rbBody.PushBack(rbContent);
             pHdr = (PAGE_REQ_HEADER*)rbBody.Data();
-            pHdr->crc32 = eck::CalcCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
+            pHdr->crc32 = eck::CalculateCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
         }
     }
     else
@@ -71,7 +71,7 @@ static int PrhCompressContent(eck::CRefBin& rbBody, const eck::CRefBin& rbConten
         pHdr = (PAGE_REQ_HEADER*)rbBody.Data();
         pHdr->bCompressed = TRUE;
         pHdr->cbContent = (UINT)rbCompressed.Size();
-        pHdr->crc32 = eck::CalcCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
+        pHdr->crc32 = eck::CalculateCrc32(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
     }
     return Z_OK;
 }
@@ -93,7 +93,7 @@ static int PrhDecompressContent(const eck::CRefBin& rbBody, eck::CRefBin& rbCont
             return r;
     }
     else
-        rbContent.DupStream(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
+        rbContent.Assign(eck::PCBYTE(pHdr + 1), pHdr->cbContent);
     return Z_OK;
 }
 
@@ -195,7 +195,7 @@ static void AwSavePage(const API_CTX& Ctx) noexcept
         }
         // 打开文章目录
         eck::CRefStrW rsSubDir{ EckStrAndLen(L"res\\page\\") };
-        rsSubDir.AppendFormat(L"%d", pHdr->iPageId);
+        rsSubDir.PushBackFormat(L"%d", pHdr->iPageId);
 
         eck::CNtObject Dir{};
         {
@@ -332,7 +332,7 @@ static void AwLoadPage(const API_CTX& Ctx) noexcept
 
         auto rsTemp{ eck::GetRunningPath() };
         rsTemp.PushBack(EckStrAndLen(L"\\res\\page\\"));
-        rsTemp.AppendFormat(L"%d", iPageId);
+        rsTemp.PushBackFormat(L"%d", iPageId);
 
         eck::CFile Dir{};
         nts = Dir.Create(rsTemp.Data(),
@@ -403,7 +403,7 @@ static void AwGetPageVersionList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (iPageId != DbIdInvalid)
     {
@@ -433,7 +433,7 @@ LIMIT ? OFFSET ?
         sqlite3_bind_int(pStmt, 3, nPage * cEntry);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "ver_id", sqlite3_column_int(pStmt, 0),
                 "user_id", sqlite3_column_int(pStmt, 1),
@@ -503,7 +503,7 @@ static void AwGetPageVersionContent(const API_CTX& Ctx) noexcept
 
         auto rsTemp{ eck::GetRunningPath() };
         rsTemp.PushBack(EckStrAndLen(L"\\res\\page\\"));
-        rsTemp.AppendFormat(L"%d", iPageId);
+        rsTemp.PushBackFormat(L"%d", iPageId);
 
         eck::CFile Dir{};
         nts = Dir.Create(rsTemp.Data(),

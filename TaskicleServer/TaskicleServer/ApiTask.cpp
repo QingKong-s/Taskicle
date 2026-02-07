@@ -42,12 +42,12 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
         int ePriority{ -1 };
         std::string_view svDesc{};
         // 制语句
-        rsSql.DupString(EckStrAndLen(R"(INSERT INTO Task(task_id, project_id)"));
+        rsSql.Assign(EckStrAndLen(R"(INSERT INTO Task(task_id, project_id)"));
 
         const auto ValName = jIn["/task_name"];
-        if (ValName.IsValid() && ValName.IsStr())
+        if (ValName.IsValid() && ValName.IsString())
         {
-            svName = { ValName.GetStr(), ValName.GetLen() };
+            svName = { ValName.GetString(), ValName.GetLength() };
             if (svName.empty())
                 svName = "Untitled Task"sv;
             rsSql.PushBack(EckStrAndLen(",task_name"));
@@ -68,9 +68,9 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
             ++cCol;
         }
         const auto ValDesc = jIn["/description"];
-        if (ValDesc.IsValid() && ValDesc.IsStr())
+        if (ValDesc.IsValid() && ValDesc.IsString())
         {
-            svDesc = { ValDesc.GetStr(), ValDesc.GetLen() };
+            svDesc = { ValDesc.GetString(), ValDesc.GetLength() };
             if (!svDesc.empty())
             {
                 rsSql.PushBack(EckStrAndLen(",description"));
@@ -234,12 +234,12 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
         int ePriority{ -1 };
         std::string_view svDesc{};
         // 制语句
-        rsSql.DupString(EckStrAndLen(R"(UPDATE Task SET )"));
+        rsSql.Assign(EckStrAndLen(R"(UPDATE Task SET )"));
 
         const auto ValName = jIn["/task_name"];
-        if (ValName.IsValid() && ValName.IsStr())
+        if (ValName.IsValid() && ValName.IsString())
         {
-            svName = { ValName.GetStr(), ValName.GetLen() };
+            svName = { ValName.GetString(), ValName.GetLength() };
             if (!svName.empty())
             {
                 rsSql.PushBack(EckStrAndLen("task_name=?,"));
@@ -263,7 +263,7 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
         const auto ValDesc = jIn["/description"];
         if (ValDesc.IsValid())
         {
-            svDesc = { ValDesc.GetStr(), ValDesc.GetLen() };
+            svDesc = { ValDesc.GetString(), ValDesc.GetLength() };
             if (!svDesc.empty())
             {
                 rsSql.PushBack(EckStrAndLen("description=?,"));
@@ -348,7 +348,7 @@ static void AwGetTaskList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     constexpr char Sql[]{ R"(
 SELECT t.task_id, t.task_name, t.status, t.priority, t.description, t.create_at, t.update_at
@@ -377,7 +377,7 @@ LIMIT ? OFFSET ?;
     sqlite3_bind_int(pStmt, 5, nPage * cEntry);
     while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
     {
-        const auto Obj = j.NewObj();
+        const auto Obj = j.NewObject();
         Obj = {
             "task_id", sqlite3_column_int(pStmt, 0),
             "task_name", SuColumnStringView(pStmt, 1),

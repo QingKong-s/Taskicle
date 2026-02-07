@@ -145,7 +145,7 @@ static void AwUpdatePageGroup(const API_CTX& Ctx) noexcept
             rApi = ApiResult::RequiredFieldMissing;
             goto Exit;
         }
-        if (!ValId.IsInt() || !ValName.IsStr())
+        if (!ValId.IsInt() || !ValName.IsString())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
@@ -209,7 +209,7 @@ static void AwGetPageGroupList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     constexpr char Sql[]{ R"(
 SELECT pg.page_group_id, pg.group_name, pg.create_at
@@ -233,7 +233,7 @@ LIMIT ? OFFSET ?;
         sqlite3_bind_int(pStmt, 4, nPage * cEntry);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "page_group_id", sqlite3_column_int(pStmt, 0),
                 "group_name", SuColumnStringView(pStmt, 1),

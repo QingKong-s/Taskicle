@@ -29,7 +29,7 @@ static void AwGetTaskLogList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (iTaskId != DbIdInvalid)
     {
@@ -61,7 +61,7 @@ LIMIT ? OFFSET ?;
         sqlite3_bind_int(pStmt, 5, nPage * cEntry);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "field_name", SuColumnStringView(pStmt, 0),
                 "old_value", SuColumnStringView(pStmt, 1),
@@ -127,7 +127,7 @@ static void AwInsertTaskRelation(const API_CTX& Ctx) noexcept
         int ePriority{ -1 };
         PCSTR pszDesc{};
         // 制语句
-        rsSql.DupString(EckStrAndLen(R"(
+        rsSql.Assign(EckStrAndLen(R"(
 INSERT INTO TaskRelation(task_id, relation_id, relation_type)
 SELECT ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM
@@ -269,7 +269,7 @@ static void AwGetTaskRelationList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (!AclDbCheckCurrentUserAccess(Ctx,
         iTaskId, DbAccess::ReadContent, r))
@@ -295,7 +295,7 @@ WHERE task_id = ?;
         sqlite3_bind_int(pStmt, 1, iTaskId);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "relation_id", sqlite3_column_int(pStmt, 0),
                 "relation_type", sqlite3_column_int(pStmt, 1),

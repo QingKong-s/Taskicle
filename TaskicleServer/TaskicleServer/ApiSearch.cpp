@@ -28,7 +28,7 @@ static void AwSearchEntity(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (!svKeyword.empty())
     {
@@ -62,7 +62,7 @@ LIMIT ? OFFSET ?;
         sqlite3_bind_int(pStmt, 5, nPage * cEntry);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "entity_id", sqlite3_column_int(pStmt, 0),
                 "type", sqlite3_column_int(pStmt, 1),

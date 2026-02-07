@@ -44,7 +44,7 @@ static void AwInsertTaskComment(const API_CTX& Ctx) noexcept
             rApi = ApiResult::RequiredFieldMissing;
             goto Exit;
         }
-        if (!ValTaskId.IsInt() || !ValContent.IsStr())
+        if (!ValTaskId.IsInt() || !ValContent.IsString())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
@@ -179,7 +179,7 @@ static void AwUpdateTaskComment(const API_CTX& Ctx) noexcept
             rApi = ApiResult::RequiredFieldMissing;
             goto Exit;
         }
-        if (!ValCommId.IsInt() || !ValContent.IsStr())
+        if (!ValCommId.IsInt() || !ValContent.IsString())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
@@ -259,7 +259,7 @@ static void AwGetTaskCommentList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (iTaskId != DbIdInvalid)
     {
@@ -287,7 +287,7 @@ LIMIT ? OFFSET ?;
             sqlite3_bind_int(pStmt, 3, nPage * cEntry);
             while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
             {
-                const auto Obj = j.NewObj();
+                const auto Obj = j.NewObject();
                 Obj = {
                     "comm_id", sqlite3_column_int(pStmt, 0),
                     "user_id", sqlite3_column_int(pStmt, 1),

@@ -335,7 +335,7 @@ static void AwLogin(const API_CTX& Ctx) noexcept
             }
             rApi = ApiResult::Ok;
             rsSetCookie.Reserve(120);
-            rsSetCookie.DupString(EckStrAndLen("sid="));
+            rsSetCookie.Assign(EckStrAndLen("sid="));
             rsSetCookie
                 .PushBack(Sid, CkSidStrLen)
                 .PushBack(EckStrAndLen("; Max-Age=864000;"))// 10天
@@ -377,8 +377,8 @@ static void AwRegister(const API_CTX& Ctx) noexcept
             rApi = ApiResult::RequiredFieldMissing;
             goto Exit;
         }
-        if (!ValName.IsStr() || !ValPwd.IsStr() ||
-            !ValKey.IsStr() || !ValRole.IsInt())
+        if (!ValName.IsString() || !ValPwd.IsString() ||
+            !ValKey.IsString() || !ValRole.IsInt())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
@@ -399,7 +399,7 @@ static void AwRegister(const API_CTX& Ctx) noexcept
             r2 = (UINT)nts;
             goto Exit;
         }
-        nts = UmHashPassword(ValPwd.GetStr(), ValPwd.GetLen(), Hash);
+        nts = UmHashPassword(ValPwd.GetString(), ValPwd.GetLength(), Hash);
         if (!NT_SUCCESS(nts))
         {
             rApi = ApiResult::Crypt;
@@ -407,7 +407,7 @@ static void AwRegister(const API_CTX& Ctx) noexcept
             goto Exit;
         }
         int rSql;
-        rApi = UmDbCreateUser(Ctx, { ValName.GetStr(), ValName.GetLen() },
+        rApi = UmDbCreateUser(Ctx, { ValName.GetString(), ValName.GetLength() },
             Hash, (DbUserRole)ValRole.GetInt(), rSql);
         if (rSql != SQLITE_OK)
         {

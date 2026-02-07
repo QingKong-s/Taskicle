@@ -28,21 +28,21 @@ public:
 EckInline int SuBindJsonStringValue(sqlite3_stmt* pStmt,
     int idxCol, const Json::CVal& jVal, std::string_view svDef = "(Empty)"sv) noexcept
 {
-    EckAssert(jVal.IsValid() && jVal.IsStr());
-    if (!jVal.GetLen())
+    EckAssert(jVal.IsValid() && jVal.IsString());
+    if (!jVal.GetLength())
         return sqlite3_bind_text(pStmt, idxCol,
             svDef.data(), (int)svDef.size(), SQLITE_STATIC);
     return sqlite3_bind_text(pStmt, idxCol,
-        jVal.GetStr(), (int)jVal.GetLen(), SQLITE_STATIC);
+        jVal.GetString(), (int)jVal.GetLength(), SQLITE_STATIC);
 }
 EckInline int SuBindJsonStringValueSafe(sqlite3_stmt* pStmt,
     int idxCol, const Json::CVal& jVal, std::string_view svDef = "(Empty)"sv) noexcept
 {
-    if (!jVal.IsValid() || !jVal.IsStr() || !jVal.GetLen())
+    if (!jVal.IsValid() || !jVal.IsString() || !jVal.GetLength())
         return sqlite3_bind_text(pStmt, idxCol,
             svDef.data(), (int)svDef.size(), SQLITE_STATIC);
     return sqlite3_bind_text(pStmt, idxCol,
-        jVal.GetStr(), (int)jVal.GetLen(), SQLITE_STATIC);
+        jVal.GetString(), (int)jVal.GetLength(), SQLITE_STATIC);
 }
 
 EckInline std::string_view SuColumnStringView(

@@ -26,13 +26,13 @@ int wmain(int argc, WCHAR** argv)
     // 初始化ECK
     eck::INITPARAM ip{};
     ip.uFlags = eck::EIF_CONSOLE_APP;
-    DWORD dwErr;
-    const auto eInitRet = eck::Init(NtCurrentImageBaseHInst(), &ip, &dwErr);
+    UINT uErr;
+    const auto eInitRet = eck::Initialize(NtCurrentImageBaseHInst(), &ip, &uErr);
     if (eInitRet != eck::InitStatus::Ok)
     {
-        EckDbgPrintFormatMessage(dwErr);
+        EckDbgPrintFormatMessage(uErr);
         eck::CRefStrW rs{};
-        rs.Format(L"Init failed: %d(0x%08X)", (int)eInitRet, dwErr);
+        rs.Format(L"Init failed: %d(0x%08X)", (int)eInitRet, uErr);
         MessageBoxW(nullptr, rs.Data(), L"Error", MB_ICONERROR);
         return 0;
     }
@@ -83,6 +83,6 @@ int wmain(int argc, WCHAR** argv)
 Exit:
     CServer::Stop();
     DbCleanup();
-    eck::UnInit();
+    eck::Uninitialize();
     return 0;
 }

@@ -146,7 +146,7 @@ static void AwUpdateProject(const API_CTX& Ctx) noexcept
             rApi = ApiResult::RequiredFieldMissing;
             goto Exit;
         }
-        if (!ValId.IsInt() || !ValName.IsStr())
+        if (!ValId.IsInt() || !ValName.IsString())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
@@ -210,7 +210,7 @@ static void AwGetProjectList(const API_CTX& Ctx) noexcept
         cEntry = MaxQueryCount;
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     constexpr char Sql[]{ R"(
 SELECT p.project_id, p.project_name, p.create_at
@@ -237,7 +237,7 @@ LIMIT ? OFFSET ?;
     sqlite3_bind_int(pStmt, 4, nPage * cEntry);
     while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
     {
-        const auto Obj = j.NewObj();
+        const auto Obj = j.NewObject();
         Obj = {
             "project_id", sqlite3_column_int(pStmt, 0),
             "project_name", SuColumnStringView(pStmt, 1),

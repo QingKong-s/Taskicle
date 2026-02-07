@@ -201,7 +201,7 @@ static void AwGetAcl(const API_CTX& Ctx) noexcept
     }
 
     Json::CMutDoc j{};
-    const auto Arr = j.NewArr();
+    const auto Arr = j.NewArray();
 
     if (iUserId != DbIdInvalid)
     {
@@ -217,7 +217,7 @@ static void AwGetAcl(const API_CTX& Ctx) noexcept
         sqlite3_bind_int(pStmt, 1, iUserId);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "entity_id", sqlite3_column_int(pStmt, 0),
                 "access", sqlite3_column_int(pStmt, 1),
@@ -244,7 +244,7 @@ static void AwGetAcl(const API_CTX& Ctx) noexcept
         sqlite3_bind_int(pStmt, 1, iEntityId);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
-            const auto Obj = j.NewObj();
+            const auto Obj = j.NewObject();
             Obj = {
                 "user_id", sqlite3_column_int(pStmt, 0),
                 "access", sqlite3_column_int(pStmt, 1),
