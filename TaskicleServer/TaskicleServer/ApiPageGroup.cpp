@@ -227,7 +227,7 @@ LIMIT ? OFFSET ?;
         EckStrAndLen(Sql), 0, &pStmt, nullptr);
     if (r == SQLITE_OK)
     {
-        sqlite3_bind_int(pStmt, 1, CkDbGetCurrentUser(Ctx));
+        sqlite3_bind_int(pStmt, 1, CkDbGetCurrentPseudoUser(Ctx));
         sqlite3_bind_int(pStmt, 2, int(DbAccess::ReadContent | DbAccess::FullControl));
         sqlite3_bind_int(pStmt, 3, cEntry);
         sqlite3_bind_int(pStmt, 4, nPage * cEntry);

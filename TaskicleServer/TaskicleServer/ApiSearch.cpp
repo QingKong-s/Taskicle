@@ -51,7 +51,7 @@ LIMIT ? OFFSET ?;
             pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
             goto Exit;
         }
-        sqlite3_bind_int(pStmt, 1, CkDbGetCurrentUser(Ctx));
+        sqlite3_bind_int(pStmt, 1, CkDbGetCurrentPseudoUser(Ctx));
         sqlite3_bind_int(pStmt, 2, int(DbAccess::ReadContent | DbAccess::FullControl));
         eck::CRefStrA rsKeyword{};
         rsKeyword.PushBackChar('%');

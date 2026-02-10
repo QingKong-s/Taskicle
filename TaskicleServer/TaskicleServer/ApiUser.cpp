@@ -3,6 +3,7 @@
 #include "ApiPriv.h"
 #include "Database.h"
 #include "SqliteUtils.h"
+#include "AccessCheck.h"
 
 struct CK_SID
 {
@@ -157,6 +158,34 @@ int CkDbGetCurrentUser(const API_CTX& Ctx) noexcept
     return DbIdUserEveryone;
 }
 
+int CkDbGetCurrentPseudoUser(const API_CTX& Ctx) noexcept
+{
+    const auto id = CkDbGetCurrentUser(Ctx);
+    if (UmIsAdministrator(Ctx, id))
+        return DbIdUserAdmin;
+    return id;
+}
+
+BOOL UmIsAdministrator(const API_CTX& Ctx, int id) noexcept
+{
+    int r;
+    constexpr char Sql[]{ R"(SELECT role FROM User WHERE user_id = ?;)" };
+
+    sqlite3_stmt* pStmt;
+    r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
+        EckStrAndLen(Sql), 0, &pStmt, nullptr);
+    if (r != SQLITE_OK)
+        return FALSE;
+    sqlite3_bind_int(pStmt, 1, id);
+    if (sqlite3_step(pStmt) == SQLITE_ROW)
+    {
+        r = sqlite3_column_int(pStmt, 2);
+        sqlite3_finalize(pStmt);
+        return r == (int)DbUserRole::Admin;
+    }
+    sqlite3_finalize(pStmt);
+    return FALSE;
+}
 
 static ApiResult UmDbQueryUser(
     const API_CTX& Ctx,

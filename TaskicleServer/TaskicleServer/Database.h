@@ -5,7 +5,11 @@ constexpr inline int DbIdInvalid = -1;
 constexpr inline int DbIdContainerPageGroup = -2;
 constexpr inline int DbIdContainerProject = -3;
 constexpr inline int DbIdUserEveryone = -4;
-constexpr inline int DbPvIdVersionLatest = -5;
+constexpr inline int DbIdUserAdmin = -5;
+
+#define TKK_DBID_USER_ADMIN "-5"
+
+constexpr inline int DbPvIdVersionLatest = -1;
 
 enum class DbRelationType
 {
@@ -72,6 +76,8 @@ enum class DbAccess : UINT
     FullControl = Owner | Admin,
 };
 ECK_ENUM_BIT_FLAGS(DbAccess);
+
+#define TKK_DBAC_ADMIN "2"
 
 int DbOpenFirst(std::wstring_view svFile, _Out_ sqlite3*& pSqlite) noexcept;
 int DbOpen(_Out_ sqlite3*& pSqlite) noexcept;

@@ -1,73 +1,96 @@
 <template>
   <div class="main-page">
     <div class="sidebar" :style="{ width: leftWidth + 'px' }">
-      <div class="sidebar-header"></div>
-      <el-menu class="menu" default-active="articles" :default-openeds="['tasks', 'articles']"
-        background-color="#1f2937" text-color="#ffffff" @select="onMenuSelect">
-        <el-sub-menu index="articles">
-          <template #title>
-            <el-icon>
-              <Notebook />
-            </el-icon><span>文章</span>
-          </template>
 
-          <div class="menu-footer">
-            <el-button type="text" icon="plus" @click="onAddPageGroup">+ 新建页面组</el-button>
-          </div>
+      <div class="sidebar-header">
+      </div>
 
-          <el-menu-item v-for="g in pageGroups" :key="g.page_group_id" :index="`articles:group:${g.page_group_id}`"
-            :class="{ 'menu-item-active': isActive('articles', 'group', g.page_group_id) }">
-            <div class="menu-item-row">
-              <div class="menu-item-name">{{ g.group_name }}</div>
-              <div class="menu-item-actions">
-                <el-button class="edit-btn" type="text" size="small" @click.stop="onEditPageGroup(g)">
-                  <el-icon>
-                    <Edit />
-                  </el-icon>
-                </el-button>
-                <el-button class="edit-btn" type="text" size="small" @click.stop="onDeletePageGroup(g)">
-                  <el-icon>
-                    <Delete />
-                  </el-icon>
-                </el-button>
-              </div>
+      <el-scrollbar style="flex: 1; min-height: 0;">
+        <el-menu class="menu" default-active="articles" :default-openeds="['tasks', 'articles']"
+          background-color="#1f2937" text-color="#ffffff" @select="onMenuSelect">
+          <el-sub-menu index="articles">
+            <template #title>
+              <el-icon>
+                <Notebook />
+              </el-icon><span>文章</span>
+            </template>
+
+            <div class="menu-footer">
+              <el-button type="text" icon="plus" @click="onAddPageGroup">+ 新建页面组</el-button>
             </div>
-          </el-menu-item>
-        </el-sub-menu>
 
-        <el-sub-menu index="tasks">
-          <template #title>
-            <el-icon>
-              <DocumentChecked />
-            </el-icon><span>任务</span>
-          </template>
-
-          <div class="menu-footer">
-            <el-button type="text" icon="plus" @click="onAddProject">+ 新建项目</el-button>
-          </div>
-
-          <el-menu-item v-for="p in projects" :key="p.project_id" :index="`tasks:project:${p.project_id}`"
-            :class="{ 'menu-item-active': isActive('tasks', 'project', p.project_id) }">
-            <div class="menu-item-row">
-              <div class="menu-item-name">{{ p.project_name }}</div>
-              <div class="menu-item-actions">
-                <el-button class="edit-btn" type="text" size="small" @click.stop="onEditProject(p)">
-                  <el-icon>
-                    <Edit />
-                  </el-icon>
-                </el-button>
-                <el-button class="edit-btn" type="text" size="small" @click.stop="onDeleteProject(p)">
-                  <el-icon>
-                    <Delete />
-                  </el-icon>
-                </el-button>
+            <el-menu-item v-for="g in pageGroups" :key="g.page_group_id" :index="`articles:group:${g.page_group_id}`"
+              :class="{ 'menu-item-active': isActive('articles', 'group', g.page_group_id) }">
+              <div class="menu-item-row">
+                <div class="menu-item-name">{{ g.group_name }}</div>
+                <div class="menu-item-actions">
+                  <el-button class="edit-btn" type="text" size="small" @click.stop="onEditPageGroup(g)">
+                    <el-icon>
+                      <Edit />
+                    </el-icon>
+                  </el-button>
+                  <el-button class="edit-btn" type="text" size="small" @click.stop="onDeletePageGroup(g)">
+                    <el-icon>
+                      <Delete />
+                    </el-icon>
+                  </el-button>
+                </div>
               </div>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="tasks">
+            <template #title>
+              <el-icon>
+                <DocumentChecked />
+              </el-icon><span>任务</span>
+            </template>
+
+            <div class="menu-footer">
+              <el-button type="text" icon="plus" @click="onAddProject">+ 新建项目</el-button>
             </div>
-          </el-menu-item>
-        </el-sub-menu>
-      </el-menu>
+
+            <el-menu-item v-for="p in projects" :key="p.project_id" :index="`tasks:project:${p.project_id}`"
+              :class="{ 'menu-item-active': isActive('tasks', 'project', p.project_id) }">
+              <div class="menu-item-row">
+                <div class="menu-item-name">{{ p.project_name }}</div>
+                <div class="menu-item-actions">
+                  <el-button class="edit-btn" type="text" size="small" @click.stop="onEditProject(p)">
+                    <el-icon>
+                      <Edit />
+                    </el-icon>
+                  </el-button>
+                  <el-button class="edit-btn" type="text" size="small" @click.stop="onDeleteProject(p)">
+                    <el-icon>
+                      <Delete />
+                    </el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </el-menu-item>
+          </el-sub-menu>
+        </el-menu>
+      </el-scrollbar>
 
       <el-menu class="sidebar-footer" background-color="#1f2937" text-color="#ffffff">
+        <el-menu-item class="menu-item-row">
+          <el-button type="text" @click.stop="onSearch">
+            <el-icon>
+              <Search />
+            </el-icon>
+            <span class="menu-item-name">搜索</span>
+          </el-button>
+        </el-menu-item>
+
+        <el-menu-item class="menu-item-row">
+          <el-button type="text" @click.stop="onWorkbench">
+            <el-icon>
+              <Grid />
+            </el-icon>
+            <span class="menu-item-name">工作台</span>
+          </el-button>
+        </el-menu-item>
+
         <el-menu-item class="menu-item-row">
           <el-button type="text" @click="onSettings">
             <el-icon>
@@ -110,6 +133,8 @@
     <Splitter @ondrag="onDrag" />
     <div class="content">
       <router-view />
+
+      <SearchPopup v-model="searchVisible" @select="onSearchSelect" />
 
       <el-dialog v-model="loginDialogVisible" width="420px" :close-on-click-modal="false">
         <template #title>
@@ -167,11 +192,12 @@
 import Splitter from './SplitBar.vue';
 import { ref, onMounted, reactive, computed } from 'vue';
 import { useRoute } from 'vue-router'
-import { Notebook, DocumentChecked, Edit, Delete, Setting, User } from '@element-plus/icons-vue'
+import { Notebook, DocumentChecked, Edit, Delete, Setting, User, Search, Grid } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../utils/api'
 import { showAxiosErrorMessage, showErrorMessage } from '@/utils/utils';
+import SearchPopup from './SearchPopup.vue'
 
 const leftWidth = ref(200);
 
@@ -389,10 +415,9 @@ onMounted(() => {
   fetchPageGroups()
 })
 
-// Auth state and dialog for login/register
 const auth = reactive({ loggedIn: false, username: '', role: 0 })
 const loginDialogVisible = ref(false)
-const loginMode = ref('login') // 'login' or 'register'
+const loginMode = ref('login')// 'login'/'register'
 
 const loginForm = reactive({ user_name: '', password: '' })
 const registerForm = reactive({ name: '', password: '', key: '', role: 1 })
@@ -459,6 +484,37 @@ async function doRegister() {
 function onSettings() {
   router.push('/settings')
 }
+
+function onSearch() {
+  searchVisible.value = true
+}
+
+function onWorkbench() {
+
+}
+
+const searchVisible = ref(false)
+
+function onSearchSelect(item) {
+  if (!item) return
+  const t = Number(item.type)
+  const id = item.entity_id
+  const cid = item.container_id
+  if (t === 1) {
+    router.push({ name: 'articles', query: { group: id } })
+  } else if (t === 2) {
+    router.push({ name: 'articles', query: { page: id } })
+  } else if (t === 3) {
+    router.push({ name: 'tasks', query: { project: id } })
+  } else if (t === 4) {
+    // task: try to include project container id if present
+    const q = {}
+    if (cid && cid !== -1) q.project = cid
+    q.task = id
+    router.push({ name: 'tasks', query: q })
+  }
+  searchVisible.value = false
+}
 </script>
 
 <style scoped>
@@ -470,18 +526,19 @@ function onSettings() {
 .sidebar {
   background: #1f2937;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sidebar-header {
-  height: 60px;
+  min-height: 0;
 }
 
 .sidebar-footer {
-  position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  box-sizing: border-box;
 }
 
 .content {

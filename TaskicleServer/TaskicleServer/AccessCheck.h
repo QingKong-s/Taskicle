@@ -10,3 +10,6 @@ int AclDbOnEntityCreate(const API_CTX& Ctx, int iUserId) noexcept;
 int AclDbOnEntityDelete(const API_CTX& Ctx, int iEntityId) noexcept;
 
 int CkDbGetCurrentUser(const API_CTX& Ctx) noexcept;
+int CkDbGetCurrentPseudoUser(const API_CTX& Ctx) noexcept;
+
+BOOL UmIsAdministrator(const API_CTX& Ctx, int id) noexcept;

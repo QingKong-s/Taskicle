@@ -112,6 +112,9 @@ EnHttpParseResult CServer::OnMessageComplete(IHttpServer* pSender, CONNID dwConn
     else if (TKK_HIT_PATH("/api/register"))
         return ApiPost_Register(Ctx);
 
+    else if (TKK_HIT_PATH("/api/search"))
+        return ApiGet_SearchEntity(Ctx);
+
     else
         return ApiGet_ResourceFile(Ctx);
 

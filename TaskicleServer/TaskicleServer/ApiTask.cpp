@@ -371,7 +371,7 @@ LIMIT ? OFFSET ?;
         goto Exit;
     }
     sqlite3_bind_int(pStmt, 1, iProjId);
-    sqlite3_bind_int(pStmt, 2, CkDbGetCurrentUser(Ctx));
+    sqlite3_bind_int(pStmt, 2, CkDbGetCurrentPseudoUser(Ctx));
     sqlite3_bind_int(pStmt, 3, int(DbAccess::ReadContent | DbAccess::FullControl));
     sqlite3_bind_int(pStmt, 4, cEntry);
     sqlite3_bind_int(pStmt, 5, nPage * cEntry);
