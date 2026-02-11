@@ -25,9 +25,35 @@
             <div class="header">
               <span class="name">{{ item.userName || (item.type === 'log' ? '系统' : '匿名') }}</span>
               <span class="time">{{ formatTime(item.time) }}</span>
+              <span v-if="item.modified" class="modified-tag">(已编辑)</span>
+              
+              <div v-if="item.type === 'comment' && editingId !== item.rawId" class="comm-actions">
+                <el-button link type="primary" size="small" @click="startEdit(item)">编辑</el-button>
+                <el-popconfirm title="确定删除这条评论吗？" @confirm="deleteComment(item.rawId)">
+                  <template #reference>
+                    <el-button link type="danger" size="small">删除</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
             </div>
+
             <div class="content-box">
-              <div v-if="item.type === 'comment'" class="text-content">{{ item.content }}</div>
+              <div v-if="item.type === 'comment'">
+                <div v-if="editingId === item.rawId" class="edit-box">
+                  <el-input 
+                    v-model="editingContent" 
+                    type="textarea" 
+                    :rows="2" 
+                    class="edit-input"
+                  />
+                  <div class="edit-actions">
+                    <el-button size="small" @click="cancelEdit">取消</el-button>
+                    <el-button type="primary" size="small" :loading="editSubmitting" @click="submitEdit">保存</el-button>
+                  </div>
+                </div>
+                <div v-else class="text-content">{{ item.content }}</div>
+              </div>
+
               <div v-else-if="item.type === 'log'" class="log-content">
                 将 <strong>{{ humanName(item.field) }}</strong> 
                 从 <span class="old-val">{{ renderVal(item.field, item.oldVal) }}</span>
@@ -66,6 +92,10 @@ const finished = ref(false)
 const page = ref(0)
 const newComment = ref('')
 
+const editingId = ref(null)
+const editingContent = ref('')
+const editSubmitting = ref(false)
+
 const rawLogs = ref([])
 const rawComms = ref([])
 
@@ -92,9 +122,11 @@ const timeline = computed(() => {
       list.push({
         type: 'comment',
         uniqueId: `comm_${comm.comm_id}`,
+        rawId: comm.comm_id, // 保存原始ID用于API调用
         time: Number(comm.create_at),
         userName: comm.user_name,
-        content: comm.content
+        content: comm.content,
+        modified: !!comm.modified // 转换 modified 字段
       })
     })
   }
@@ -146,6 +178,7 @@ async function fetchData(isLoadMore = false) {
     finished.value = false
     rawLogs.value = []
     rawComms.value = []
+    editingId.value = null
   }
 
   try {
@@ -187,10 +220,13 @@ function onScroll(e) {
   }
 }
 
+// 新增评论
 async function addComment() {
   if (!newComment.value.trim() || props.taskId < 0) return
   submitting.value = true
   try {
+    // 尽管文档中Insert的参数写了comm_id，但按照常规逻辑和现有代码，此处应该是 task_id
+    // 如果后端严格要求 comm_id 代表任务ID，请保持现状，否则可能需要根据实际情况调整
     await api.post('/api/task_comm_insert', { task_id: props.taskId, content: newComment.value })
     newComment.value = ''
     await fetchData(false)
@@ -198,6 +234,60 @@ async function addComment() {
     showErrorMessage(ElMessage, e)
   } finally {
     submitting.value = false
+  }
+}
+
+async function deleteComment(commId) {
+  try {
+    const res = await api.post('/api/task_comm_delete', { comm_id: commId })
+    if (res.data?.r === 0) {
+      ElMessage.success('删除成功')
+      rawComms.value = rawComms.value.filter(c => c.comm_id !== commId)
+    } else {
+      throw new Error(res.data?.msg || '删除失败')
+    }
+  } catch (e) {
+    showErrorMessage(ElMessage, e)
+  }
+}
+
+function startEdit(item) {
+  editingId.value = item.rawId
+  editingContent.value = item.content
+}
+
+function cancelEdit() {
+  editingId.value = null
+  editingContent.value = ''
+}
+
+async function submitEdit() {
+  if (!editingContent.value.trim()) {
+    ElMessage.warning('评论内容不能为空')
+    return
+  }
+  editSubmitting.value = true
+  try {
+    const res = await api.post('/api/task_comm_update', { 
+      comm_id: editingId.value, 
+      content: editingContent.value 
+    })
+    
+    if (res.data?.r === 0) {
+      ElMessage.success('修改成功')
+      const target = rawComms.value.find(c => c.comm_id === editingId.value)
+      if (target) {
+        target.content = editingContent.value
+        target.modified = 1
+      }
+      cancelEdit()
+    } else {
+      throw new Error(res.data?.msg || '修改失败')
+    }
+  } catch (e) {
+    showErrorMessage(ElMessage, e)
+  } finally {
+    editSubmitting.value = false
   }
 }
 
@@ -278,6 +368,7 @@ defineExpose({ reload: () => fetchData(false) })
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .name {
@@ -290,6 +381,25 @@ defineExpose({ reload: () => fetchData(false) })
   color: #999;
 }
 
+.modified-tag {
+  font-size: 12px;
+  color: #909399;
+  font-style: italic;
+}
+
+.comm-actions {
+  margin-left: auto; /* 推到右侧 */
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  gap: 4px;
+}
+
+/* 鼠标悬停在条目上时显示操作按钮 */
+.timeline-item:hover .comm-actions {
+  opacity: 1;
+}
+
 .content-box {
   line-height: 1.5;
 }
@@ -298,6 +408,15 @@ defineExpose({ reload: () => fetchData(false) })
   color: #333;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.edit-box {
+  margin-top: 4px;
+}
+
+.edit-actions {
+  margin-top: 6px;
+  text-align: right;
 }
 
 .log-content {

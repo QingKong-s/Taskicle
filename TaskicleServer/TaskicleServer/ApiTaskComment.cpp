@@ -202,7 +202,10 @@ static void AwUpdateTaskComment(const API_CTX& Ctx) noexcept
             goto Exit;
         }
 
-        constexpr char Sql[]{ R"(UPDATE TaskComment SET content = ? WHERE comm_id = ?)" };
+        constexpr char Sql[]{ R"(
+UPDATE TaskComment
+SET modified = 1, content = ? WHERE comm_id = ?)"
+        };
         sqlite3_stmt* pStmt;
         r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
             EckStrAndLen(Sql), 0, &pStmt, nullptr);

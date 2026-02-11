@@ -189,7 +189,7 @@ function getExpireText(row) {
   const diffMs = expire - now
   const dayMs = 1000 * 60 * 60 * 24
   if (diffMs >= 0) {
-    const diffDays = Math.floor(diffMs / dayMs)
+    const diffDays = Math.ceil(diffMs / dayMs)
     if (diffDays < 5) {
       return `${diffDays}天后过期`
     }
