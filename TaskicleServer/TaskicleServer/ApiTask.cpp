@@ -41,8 +41,9 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
         int eStatus{ -1 };
         int ePriority{ -1 };
         std::string_view svDesc{};
+        UINT64 tExpire{};
         // 制语句
-        rsSql.Assign(EckStrAndLen(R"(INSERT INTO Task(task_id, project_id)"));
+        rsSql.Assign(R"(INSERT INTO Task(task_id, project_id, creator_id, assignee_id)"sv);
 
         const auto ValName = jIn["/task_name"];
         if (ValName.IsValid() && ValName.IsString())
@@ -77,9 +78,19 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
                 ++cCol;
             }
         }
+        const auto ValExpire = jIn["/expire_at"];
+        if (ValExpire.IsValid() && ValExpire.IsInt())
+        {
+            tExpire = ValExpire.GetUInt64();
+            if (tExpire)
+            {
+                rsSql.PushBack(EckStrAndLen(",expire_at"));
+                ++cCol;
+            }
+        }
 
         rsSql.PushBack(EckStrAndLen(R"(
-)VALUES ((SELECT id FROM GlobalId), ?
+)VALUES ((SELECT id FROM GlobalId), ?, ?, ?
 )"));
         EckCounterNV(cCol)
             rsSql.PushBack(EckStrAndLen(",?"));
@@ -95,7 +106,17 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
         }
         // 绑定
         int idxCol = 1;
+        // project_id
         sqlite3_bind_int(pStmt, idxCol++, ValProjId.GetInt());
+        // creator_id
+        sqlite3_bind_int(pStmt, idxCol++, iUserId);
+        // assignee_id
+        const auto ValAssignee = jIn["/assignee_id"];
+        sqlite3_bind_int(pStmt, idxCol++,
+            (ValAssignee.IsValid() && ValAssignee.IsInt()) ?
+            ValAssignee.GetInt() :
+            iUserId);
+        //
         if (!svName.empty())
             sqlite3_bind_text(pStmt, idxCol++,
                 svName.data(), (int)svName.size(), SQLITE_STATIC);
@@ -106,6 +127,8 @@ static void AwInsertTask(const API_CTX& Ctx) noexcept
         if (!svDesc.empty())
             sqlite3_bind_text(pStmt, idxCol++,
                 svDesc.data(), (int)svDesc.size(), SQLITE_STATIC);
+        if (tExpire)
+            sqlite3_bind_int64(pStmt, idxCol++, tExpire);
 
         CSqliteTransaction Tx{ Ctx.pExtra->pSqlite };
         r = DbIncrementId(Ctx.pExtra->pSqlite);
@@ -233,8 +256,10 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
         int eStatus{ -1 };
         int ePriority{ -1 };
         std::string_view svDesc{};
+        UINT64 tExpire{};
+        int iAssigneeId{ DbIdInvalid };
         // 制语句
-        rsSql.Assign(EckStrAndLen(R"(UPDATE Task SET )"));
+        rsSql.Assign(R"(UPDATE Task SET update_at=CAST(unixepoch('subsecond') * 1000 AS INTEGER),)"sv);
 
         const auto ValName = jIn["/task_name"];
         if (ValName.IsValid() && ValName.IsString())
@@ -270,6 +295,23 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
                 ++cCol;
             }
         }
+        const auto ValExpire = jIn["/expire_at"];
+        if (ValExpire.IsValid() && ValExpire.IsNumber())
+        {
+            tExpire = ValExpire.GetUInt64();
+            if (tExpire)
+            {
+                rsSql.PushBack(EckStrAndLen("expire_at=?,"));
+                ++cCol;
+            }
+        }
+        const auto ValAssignee = jIn["/assignee_id"];
+        if (ValAssignee.IsValid() && ValAssignee.IsInt())
+        {
+            iAssigneeId = ValAssignee.GetInt();
+            rsSql.PushBack(EckStrAndLen("assignee_id=?,"));
+            ++cCol;
+        }
 
         if (!cCol)
         {
@@ -301,6 +343,10 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
         if (!svDesc.empty())
             sqlite3_bind_text(pStmt, idxCol++,
                 svDesc.data(), (int)svDesc.size(), SQLITE_STATIC);
+        if (tExpire)
+            sqlite3_bind_int64(pStmt, idxCol++, tExpire);
+        if (iAssigneeId != DbIdInvalid)
+            sqlite3_bind_int(pStmt, idxCol++, iAssigneeId);
         sqlite3_bind_int(pStmt, idxCol++, ValId.GetInt());
 
         r = sqlite3_step(pStmt);
@@ -351,7 +397,10 @@ static void AwGetTaskList(const API_CTX& Ctx) noexcept
     const auto Arr = j.NewArray();
 
     constexpr char Sql[]{ R"(
-SELECT t.task_id, t.task_name, t.status, t.priority, t.description, t.create_at, t.update_at
+SELECT
+    t.task_id, t.task_name, t.status, t.priority,
+    t.description, t.create_at, t.update_at,
+    t.expire_at, t.assignee_id, t.creator_id
 FROM Task AS t
 JOIN Acl AS a
 ON a.entity_id = t.task_id
@@ -386,6 +435,9 @@ LIMIT ? OFFSET ?;
             "description", SuColumnStringView(pStmt, 4),
             "create_at", sqlite3_column_int64(pStmt, 5),
             "update_at", sqlite3_column_int64(pStmt, 6),
+            "expire_at", sqlite3_column_int64(pStmt, 7),
+            "assignee_id", sqlite3_column_int(pStmt, 8),
+            "creator_id", sqlite3_column_int(pStmt, 9),
         };
         Arr.ArrPushBack(Obj);
     }

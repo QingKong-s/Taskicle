@@ -190,7 +190,7 @@
 
 <script setup>
 import Splitter from './SplitBar.vue';
-import { ref, onMounted, reactive, computed } from 'vue';
+import { ref, onMounted, reactive, computed, provide } from 'vue';
 import { useRoute } from 'vue-router'
 import { Notebook, DocumentChecked, Edit, Delete, Setting, User, Search, Grid } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
@@ -494,9 +494,17 @@ function onWorkbench() {
 }
 
 const searchVisible = ref(false)
+const pendingSelectHandler = ref(null)
 
 function onSearchSelect(item) {
   if (!item) return
+  if (pendingSelectHandler.value) {
+    try { pendingSelectHandler.value(item) } catch (e) { console.error(e) }
+    pendingSelectHandler.value = null
+    searchVisible.value = false
+    return
+  }
+
   const t = Number(item.type)
   const id = item.entity_id
   const cid = item.container_id
@@ -507,7 +515,6 @@ function onSearchSelect(item) {
   } else if (t === 3) {
     router.push({ name: 'tasks', query: { project: id } })
   } else if (t === 4) {
-    // task: try to include project container id if present
     const q = {}
     if (cid && cid !== -1) q.project = cid
     q.task = id
@@ -515,6 +522,11 @@ function onSearchSelect(item) {
   }
   searchVisible.value = false
 }
+
+provide('openSearch', ({ onSelect } = {}) => {
+  pendingSelectHandler.value = typeof onSelect === 'function' ? onSelect : null
+  searchVisible.value = true
+})
 </script>
 
 <style scoped>

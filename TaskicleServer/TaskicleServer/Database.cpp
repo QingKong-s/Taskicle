@@ -48,13 +48,13 @@ CREATE TABLE IF NOT EXISTS User (
     user_name       TEXT        NOT NULL UNIQUE,
     pw_hash         TEXT        NOT NULL,
     role            INTEGER     NOT NULL DEFAULT 0,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER))
 );
 
 CREATE TABLE IF NOT EXISTS UserSession (
     session_id      TEXT        PRIMARY KEY,
     user_id         INTEGER     NOT NULL,
-    expire_at       DATETIME    NOT NULL
+    expire_at       INTEGER     NOT NULL
 );
 )";
     char* pszErrMsg{};
@@ -72,7 +72,7 @@ static int DbpTableCreateProject(sqlite3* pSqlite) noexcept
 CREATE TABLE IF NOT EXISTS Project (
     project_id      INTEGER     PRIMARY KEY,
     project_name    TEXT        NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER))
 );
 
 CREATE INDEX IF NOT EXISTS IdxProject_Name ON Project(project_id);
@@ -96,9 +96,14 @@ CREATE TABLE IF NOT EXISTS Task (
     status          INTEGER     NOT NULL DEFAULT 0,
     priority        INTEGER     NOT NULL DEFAULT 2,
     description     TEXT        DEFAULT '',
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(project_id) REFERENCES Project(project_id)
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
+    update_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
+    expire_at       INTEGER     NOT NULL DEFAULT 0,
+    assignee_id     INTEGER     NOT NULL,
+    creator_id      INTEGER     NOT NULL,
+    FOREIGN KEY(project_id) REFERENCES Project(project_id),
+    FOREIGN KEY(assignee_id) REFERENCES User(user_id),
+    FOREIGN KEY(creator_id) REFERENCES User(user_id)
 );
 
 CREATE INDEX IF NOT EXISTS IdxTask_TaskProjId ON Task(task_id, project_id);
@@ -109,17 +114,17 @@ CREATE TABLE IF NOT EXISTS TaskLog (
     field_name      TEXT        NOT NULL,
     old_value       TEXT        NOT NULL,
     new_value       TEXT        NOT NULL,
-    change_at       TEXT        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    change_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
     FOREIGN KEY(task_id) REFERENCES Task(task_id)
 );
 
 CREATE TABLE IF NOT EXISTS TaskComment (
-    comment_id      INTEGER     PRIMARY KEY,
+    comm_id         INTEGER     PRIMARY KEY,
     task_id         INTEGER     NOT NULL,
     user_id         INTEGER     NOT NULL,
     content         TEXT        NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_modified     INTEGER     NOT NULL DEFAULT 0,
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
+    modified        INTEGER     NOT NULL DEFAULT 0,
     FOREIGN KEY(task_id) REFERENCES Task(task_id),
     FOREIGN KEY(user_id) REFERENCES User(user_id)
 );
@@ -145,101 +150,46 @@ CREATE INDEX IF NOT EXISTS IdxTaskRelation_TaskRelationId ON TaskRelation(task_i
         return r;
     }
 
-    if (!DbpIsTriggerExists(pSqlite, "TrUpdateTask_ProjectId"sv))
-    {
-        constexpr auto Sql = R"(
-CREATE TRIGGER IF NOT EXISTS TrUpdateTask_ProjectId
-AFTER UPDATE ON Task
-WHEN OLD.project_id IS NOT NEW.project_id
-BEGIN
-    INSERT INTO TaskLog(task_id, field_name, old_value, new_value)
-    VALUES (OLD.task_id, 'project_id', OLD.project_id, NEW.project_id);
-END;
-)";
-        r = sqlite3_exec(pSqlite, Sql, nullptr, nullptr, &pszErrMsg);
-        if (r != SQLITE_OK)
+    auto FnCreateTrigger = [&](std::string_view svTriggerName, std::string_view svFieldName) -> int
         {
-            LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
-            sqlite3_free(pszErrMsg);
+            if (DbpIsTriggerExists(pSqlite, svTriggerName))
+                return SQLITE_OK;
+            eck::CRefStrA rsSql{};
+            rsSql
+                .PushBack("CREATE TRIGGER IF NOT EXISTS "sv).PushBack(svTriggerName)
+                .PushBack(" AFTER UPDATE ON Task WHEN OLD."sv)
+                .PushBack(svFieldName).PushBack(" IS NOT NEW."sv).PushBack(svFieldName)
+                .PushBack(" BEGIN "sv)
+                .PushBack("INSERT INTO TaskLog(task_id, field_name, old_value, new_value)"sv)
+                .PushBack("VALUES (OLD.task_id, '"sv).PushBack(svFieldName)
+                .PushBack("', OLD."sv).PushBack(svFieldName)
+                .PushBack(", NEW."sv).PushBack(svFieldName)
+                .PushBack("); END;"sv);
+            const auto r = sqlite3_exec(pSqlite, rsSql.Data(), nullptr, nullptr, &pszErrMsg);
+            if (r != SQLITE_OK)
+            {
+                LOGE << "Sqlite error on " << svTriggerName << ": " << r << "(" << pszErrMsg << ")";
+                sqlite3_free(pszErrMsg);
+            }
             return r;
-        }
-    }
-    if (!DbpIsTriggerExists(pSqlite, "TrUpdateTask_TaskName"sv))
-    {
-        constexpr auto Sql = R"(
-CREATE TRIGGER IF NOT EXISTS TrUpdateTask_TaskName
-AFTER UPDATE ON Task
-WHEN OLD.task_name IS NOT NEW.task_name
-BEGIN
-    INSERT INTO TaskLog(task_id, field_name, old_value, new_value)
-    VALUES (OLD.task_id, 'task_name', OLD.task_name, NEW.task_name);
-END;
-)";
-        r = sqlite3_exec(pSqlite, Sql, nullptr, nullptr, &pszErrMsg);
-        if (r != SQLITE_OK)
-        {
-            LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
-            sqlite3_free(pszErrMsg);
-            return r;
-        }
-    }
-    if (!DbpIsTriggerExists(pSqlite, "TrUpdateTask_Status"sv))
-    {
-        constexpr auto Sql = R"(
-CREATE TRIGGER IF NOT EXISTS TrUpdateTask_Status
-AFTER UPDATE ON Task
-WHEN OLD.status IS NOT NEW.status
-BEGIN
-    INSERT INTO TaskLog(task_id, field_name, old_value, new_value)
-    VALUES (OLD.task_id, 'status', OLD.status, NEW.status);
-END;
-)";
-        r = sqlite3_exec(pSqlite, Sql, nullptr, nullptr, &pszErrMsg);
-        if (r != SQLITE_OK)
-        {
-            LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
-            sqlite3_free(pszErrMsg);
-            return r;
-        }
-    }
-    if (!DbpIsTriggerExists(pSqlite, "TrUpdateTask_Priority"sv))
-    {
-        constexpr auto Sql = R"(
-CREATE TRIGGER IF NOT EXISTS TrUpdateTask_Priority
-AFTER UPDATE ON Task
-WHEN OLD.priority IS NOT NEW.priority
-BEGIN
-    INSERT INTO TaskLog(task_id, field_name, old_value, new_value)
-    VALUES (OLD.task_id, 'priority', OLD.priority, NEW.priority);
-END;
-)";
-        r = sqlite3_exec(pSqlite, Sql, nullptr, nullptr, &pszErrMsg);
-        if (r != SQLITE_OK)
-        {
-            LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
-            sqlite3_free(pszErrMsg);
-            return r;
-        }
-    }
-    if (!DbpIsTriggerExists(pSqlite, "TrUpdateTask_Description"sv))
-    {
-        constexpr auto Sql = R"(
-CREATE TRIGGER IF NOT EXISTS TrUpdateTask_Description
-AFTER UPDATE ON Task
-WHEN OLD.description IS NOT NEW.description
-BEGIN
-    INSERT INTO TaskLog(task_id, field_name, old_value, new_value)
-    VALUES (OLD.task_id, 'description', OLD.description, NEW.description);
-END;
-)";
-        r = sqlite3_exec(pSqlite, Sql, nullptr, nullptr, &pszErrMsg);
-        if (r != SQLITE_OK)
-        {
-            LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
-            sqlite3_free(pszErrMsg);
-            return r;
-        }
-    }
+        };
+
+    if ((r = FnCreateTrigger("TrUpdateTask_ProjectId"sv, "project_id"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_TaskName"sv, "task_name"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_Status"sv, "status"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_Priority"sv, "priority"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_Description"sv, "description"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_ExpireAt"sv, "expire_at"sv)) != SQLITE_OK)
+        return r;
+    if ((r = FnCreateTrigger("TrUpdateTask_AssigneeId"sv, "assignee_id"sv)) != SQLITE_OK)
+        return r;
+
+    return SQLITE_OK;
 
     return r;
 }
@@ -249,7 +199,7 @@ static int DbpTableCreatePageGroup(sqlite3* pSqlite) noexcept
 CREATE TABLE IF NOT EXISTS PageGroup (
     page_group_id   INTEGER     PRIMARY KEY,
     group_name      TEXT        NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER))
 );
 )";
     char* pszErrMsg{};
@@ -268,7 +218,7 @@ CREATE TABLE IF NOT EXISTS Page (
     page_id         INTEGER     PRIMARY KEY,
     page_group_id   INTEGER     NOT NULL,
     page_name       TEXT        NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
     has_draft       INTEGER     NOT NULL DEFAULT 0,
     FOREIGN KEY(page_group_id) REFERENCES PageGroup(page_group_id)
 );
@@ -278,7 +228,7 @@ CREATE INDEX IF NOT EXISTS IdxPage_PageId ON Page(page_id, page_group_id);
 CREATE TABLE IF NOT EXISTS PageVersion (
     page_ver_id     INTEGER     PRIMARY KEY AUTOINCREMENT,
     page_id         INTEGER     NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
     FOREIGN KEY(page_id) REFERENCES Page(page_id)
 );
 
@@ -342,7 +292,7 @@ CREATE TABLE IF NOT EXISTS TaskComment (
     comm_id         INTEGER     PRIMARY KEY AUTOINCREMENT,
     task_id         INTEGER     NOT NULL,
     user_id         INTEGER     NOT NULL,
-    create_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    create_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
     content         TEXT        NOT NULL,
     FOREIGN KEY(user_id) REFERENCES User(user_id),
     FOREIGN KEY(task_id) REFERENCES Task(task_id)

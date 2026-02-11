@@ -70,6 +70,15 @@ EnHttpParseResult CServer::OnMessageComplete(IHttpServer* pSender, CONNID dwConn
     else if (TKK_HIT_PATH("/api/task_list"))
         return ApiGet_TaskList(Ctx);
 
+    else if (TKK_HIT_PATH("/api/task_comm_insert"))
+        return ApiPost_InsertTaskComment(Ctx);
+    else if (TKK_HIT_PATH("/api/task_comm_delete"))
+        return ApiPost_DeleteTaskComment(Ctx);
+    else if (TKK_HIT_PATH("/api/task_comm_update"))
+        return ApiPost_UpdateTaskComment(Ctx);
+    else if (TKK_HIT_PATH("/api/task_comm_list"))
+        return ApiGet_TaskCommentList(Ctx);
+
     else if (TKK_HIT_PATH("/api/task_log"))
         return ApiGet_TaskLogList(Ctx);
     else if (TKK_HIT_PATH("/api/task_relation_insert"))

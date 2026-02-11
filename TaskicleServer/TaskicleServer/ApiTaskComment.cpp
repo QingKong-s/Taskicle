@@ -271,10 +271,12 @@ static void AwGetTaskCommentList(const API_CTX& Ctx) noexcept
         }
 
         constexpr char Sql[]{ R"(
-SELECT comm_id, user_id, content, create_at
-FROM TaskComment
-WHERE task_id = ?
-ORDER BY comm_id ASC
+SELECT t.comm_id, t.user_id, t.content, t.create_at, t.modified, u.user_name
+FROM TaskComment AS t
+JOIN User AS u
+ON t.user_id = u.user_id
+WHERE t.task_id = ?
+ORDER BY t.create_at DESC
 LIMIT ? OFFSET ?;
 )" };
         sqlite3_stmt* pStmt;
@@ -293,6 +295,8 @@ LIMIT ? OFFSET ?;
                     "user_id", sqlite3_column_int(pStmt, 1),
                     "content", SuColumnStringView(pStmt, 2),
                     "create_at", sqlite3_column_int64(pStmt, 3),
+                    "modified", !!sqlite3_column_int(pStmt, 4),
+                    "user_name", SuColumnStringView(pStmt, 5),
                 };
                 Arr.ArrPushBack(Obj);
             }

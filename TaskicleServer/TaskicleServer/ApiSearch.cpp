@@ -39,7 +39,7 @@ JOIN Acl a ON a.entity_id = s.entity_id
 WHERE
     a.user_id = ?
     AND (a.access & ?) != 0
-    AND s.name LIKE ?
+    AND (s.name LIKE ? OR s.entity_id = ?)
 ORDER BY s.entity_id
 LIMIT ? OFFSET ?;
 )" };
@@ -53,13 +53,21 @@ LIMIT ? OFFSET ?;
         }
         sqlite3_bind_int(pStmt, 1, CkDbGetCurrentPseudoUser(Ctx));
         sqlite3_bind_int(pStmt, 2, int(DbAccess::ReadContent | DbAccess::FullControl));
+
+        eck::CRefStrA rsDecoded{};
+        eck::UrlDecode(svKeyword.data(), (int)svKeyword.size(), rsDecoded);
         eck::CRefStrA rsKeyword{};
         rsKeyword.PushBackChar('%');
-        SuEscapeLikeQuery(svKeyword, rsKeyword);
+        SuEscapeLikeQuery(rsDecoded.ToStringView(), rsKeyword);
         rsKeyword.PushBackChar('%');
         sqlite3_bind_text(pStmt, 3, rsKeyword.Data(), rsKeyword.Size(), nullptr);
-        sqlite3_bind_int(pStmt, 4, cEntry);
-        sqlite3_bind_int(pStmt, 5, nPage * cEntry);
+
+        int iKeywordAsId = DbIdInvalid;
+        ApiParseInt(svKeyword, iKeywordAsId);
+        sqlite3_bind_int(pStmt, 4, iKeywordAsId);
+
+        sqlite3_bind_int(pStmt, 5, cEntry);
+        sqlite3_bind_int(pStmt, 6, nPage * cEntry);
         while ((r = sqlite3_step(pStmt)) == SQLITE_ROW)
         {
             const auto Obj = j.NewObject();

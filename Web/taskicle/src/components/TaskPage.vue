@@ -22,6 +22,10 @@
 
               <span class="task-name" :title="scope.row.name">{{ scope.row.task_name }}</span>
 
+              <span v-if="getExpireText(scope.row)" class="capsule expire-capsule" :class="getExpireClass(scope.row)">
+                {{ getExpireText(scope.row) }}
+              </span>
+
               <span class="capsule state-capsule" :style="{
                 background: getStatus('state', scope.row.status).background,
                 color: getStatus('state', scope.row.status).color
@@ -175,6 +179,45 @@ function getColor({ row }) {
   return ""
 }
 
+function getExpireText(row) {
+  if (!row) return ''
+  const v = row.expire_at
+  if (v === undefined || v === null || v === '') return ''
+  const expire = Number(v)
+  if (!expire) return ''
+  const now = Date.now()
+  const diffMs = expire - now
+  const dayMs = 1000 * 60 * 60 * 24
+  if (diffMs >= 0) {
+    const diffDays = Math.floor(diffMs / dayMs)
+    if (diffDays < 5) {
+      return `${diffDays}天后过期`
+    }
+    return ''
+  } else {
+    const daysExpired = Math.floor(Math.abs(diffMs) / dayMs)
+    const display = daysExpired > 99 ? '99+' : String(daysExpired)
+    return `过期${display}天`
+  }
+}
+
+function getExpireClass(row) {
+  if (!row) return ''
+  const v = row.expire_at
+  if (v === undefined || v === null || v === '') return ''
+  const expire = Number(v)
+  if (!expire) return ''
+  const now = Date.now()
+  const diffMs = expire - now
+  const dayMs = 1000 * 60 * 60 * 24
+  if (diffMs >= 0) {
+    const diffDays = Math.floor(diffMs / dayMs)
+    if (diffDays < 5) return 'soon'
+    return ''
+  }
+  return 'expired'
+}
+
 function onTaskUpdated(updated) {
   if (!updated) return
   const id = updated.task_id || updated.id
@@ -272,7 +315,21 @@ const tableData = ref([
 }
 
 .state-capsule {
+  margin-left: 8px;
+}
+
+.expire-capsule {
   margin-left: auto;
+  background: #fff7e6;
+  color: #d48806;
+}
+.expire-capsule.soon {
+  background: #fff7e6;
+  color: #d48806;
+}
+.expire-capsule.expired {
+  background: #ffecec;
+  color: #c00;
 }
 
 /* 最低 */

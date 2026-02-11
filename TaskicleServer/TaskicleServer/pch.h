@@ -19,6 +19,7 @@
 #include "eck\DateTimeHelper.h"
 #include "eck\CTimeIdGenerator.h"
 #include "eck\CTrivialBuffer.h"
+#include "eck\EnDeCode.h"
 
 #include <plog\Log.h>
 #include <plog\Initializers\RollingFileInitializer.h>

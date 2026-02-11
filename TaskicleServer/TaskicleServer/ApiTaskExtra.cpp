@@ -34,7 +34,7 @@ static void AwGetTaskLogList(const API_CTX& Ctx) noexcept
     if (iTaskId != DbIdInvalid)
     {
         constexpr char Sql[]{ R"(
-SELECT t.field_name, t.old_value, t.new_value, strftime('%s', t.change_at)
+SELECT t.field_name, t.old_value, t.new_value, t.change_at
 FROM TaskLog AS t
 JOIN Acl AS a
 ON a.entity_id = t.task_id
@@ -55,7 +55,7 @@ LIMIT ? OFFSET ?;
         }
 
         sqlite3_bind_int(pStmt, 1, iTaskId);
-        sqlite3_bind_int(pStmt, 2, CkDbGetCurrentUser(Ctx));
+        sqlite3_bind_int(pStmt, 2, CkDbGetCurrentPseudoUser(Ctx));
         sqlite3_bind_int(pStmt, 3, int(DbAccess::ReadChange | DbAccess::FullControl));
         sqlite3_bind_int(pStmt, 4, cEntry);
         sqlite3_bind_int(pStmt, 5, nPage * cEntry);
@@ -127,21 +127,21 @@ static void AwInsertTaskRelation(const API_CTX& Ctx) noexcept
         int ePriority{ -1 };
         PCSTR pszDesc{};
         // 制语句
-        rsSql.Assign(EckStrAndLen(R"(
+        rsSql.Assign(R"(
 INSERT INTO TaskRelation(task_id, relation_id, relation_type)
 SELECT ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM
-)"));
+)"sv);
         switch ((DbRelationType)ValType.GetInt())
         {
         case DbRelationType::Task:
-            rsSql.PushBack(EckStrAndLen(R"( Task WHERE task_id = ?);)"));
+            rsSql.PushBack(R"( Task WHERE task_id = ?);)"sv);
+            break;
+        case DbRelationType::Page:
+            rsSql.PushBack(R"( Page WHERE page_id = ?);)"sv);
             break;
         case DbRelationType::Tag:
-            rsSql.PushBack(EckStrAndLen(R"( Tag WHERE tag_id = ?);)"));
-            break;
-        case DbRelationType::Article:
-            rsSql.PushBack(EckStrAndLen(R"( Article WHERE article_id = ?;)"));
+            rsSql.PushBack(R"( Tag WHERE tag_id = ?);)"sv);
             break;
         default:
             rApi = ApiResult::InvalidEnum;
@@ -271,18 +271,21 @@ static void AwGetTaskRelationList(const API_CTX& Ctx) noexcept
     Json::CMutDoc j{};
     const auto Arr = j.NewArray();
 
-    if (!AclDbCheckCurrentUserAccess(Ctx,
-        iTaskId, DbAccess::ReadContent, r))
-    {
-        rApi = ApiResult::AccessDenied;
-        goto Exit;
-    }
-
     if (iTaskId != DbIdInvalid)
     {
+        if (!AclDbCheckCurrentUserAccess(Ctx,
+            iTaskId, DbAccess::ReadContent, r))
+        {
+            rApi = ApiResult::AccessDenied;
+            goto Exit;
+        }
+
         constexpr char Sql[]{ R"(
-SELECT relation_id, relation_type FROM TaskRelation
-WHERE task_id = ?;
+SELECT r.relation_id, r.relation_type, COALESCE(t.task_name, p.page_name)
+FROM TaskRelation AS r
+LEFT JOIN Task AS t ON (r.relation_type = 1 AND t.task_id = r.relation_id)
+LEFT JOIN Page AS p ON (r.relation_type = 2 AND p.page_id = r.relation_id)
+WHERE r.task_id = ?;
 )" };
         sqlite3_stmt* pStmt;
         r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
@@ -299,6 +302,7 @@ WHERE task_id = ?;
             Obj = {
                 "relation_id", sqlite3_column_int(pStmt, 0),
                 "relation_type", sqlite3_column_int(pStmt, 1),
+                "name", SuColumnStringView(pStmt, 2),
             };
             Arr.ArrPushBack(Obj);
         }

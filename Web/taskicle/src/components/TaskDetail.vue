@@ -10,8 +10,8 @@
     </div>
 
     <div class="section name">
-      <el-input v-model="localTask.task_name" type="input" :autosize="{ minRows: 1, maxRows: 6 }"
-        class="field-name field" @blur="() => saveTask(['task_name'])" />
+      <el-input v-model="localTask.task_name" type="input" class="field-name field"
+        @blur="() => saveTask(['task_name'])" />
     </div>
 
     <div class="section row two-cols">
@@ -74,29 +74,38 @@
 
     <div class="section">
       <label class="label">描述</label>
-      <el-input v-model="localTask.description" type="textarea" :autosize="{ minRows: 4 }"
-        class="field-desc field" @blur="() => saveTask(['description'])" />
+      <el-input v-model="localTask.description" type="textarea" :autosize="{ minRows: 4 }" class="field-desc field"
+        @blur="() => saveTask(['description'])" />
     </div>
 
     <div class="section">
       <label class="label">属性</label>
       <el-descriptions :column="1" class="weak-desc">
-        <el-descriptions-item label="创建时间">2025-01-01</el-descriptions-item>
-        <el-descriptions-item label="更新时间">2025-01-20</el-descriptions-item>
+        <el-descriptions-item label="创建时间">
+          {{ new Date(localTask.create_at).toLocaleString() }}
+        </el-descriptions-item>
+        <el-descriptions-item label="更新时间">
+          {{ new Date(localTask.update_at).toLocaleString() }}
+        </el-descriptions-item>
+
+        <el-descriptions-item label="过期时间">
+          <el-date-picker v-model="localTask.expire_at" type="datetime" value-format="x" clearable
+            @change="(val) => saveTask(['expire_at'])" />
+        </el-descriptions-item>
       </el-descriptions>
     </div>
 
     <div class="section">
       <label class="label">
         关联任务
-        <el-button type="text" size="small" @click="addRelation(0)">添加</el-button>
+        <el-button type="text" size="small" @click="showSearch(1)">添加</el-button>
       </label>
       <ul class="list">
         <li v-for="rel in relatedTasks" :key="rel.relation_id" class="click-item">
           <el-icon>
             <Tickets />
           </el-icon>
-          #{{ rel.relation_id }}
+          #{{ rel.relation_id }} {{ rel.name }}
           <el-button type="text" size="small" style="float:right" @click.stop="deleteRelation(rel)">删除</el-button>
         </li>
       </ul>
@@ -105,7 +114,7 @@
     <div class="section">
       <label class="label">
         关联页面
-        <el-button type="text" size="small" @click="addRelation(1)">添加</el-button>
+        <el-button type="text" size="small" @click="showSearch(2)">添加</el-button>
       </label>
 
       <ul class="list">
@@ -113,7 +122,7 @@
           <el-icon>
             <Document />
           </el-icon>
-          #{{ rel.relation_id }}
+          #{{ rel.relation_id }} {{ rel.name }}
           <el-button type="text" size="small" style="float:right" @click.stop="deleteRelation(rel)">删除</el-button>
         </li>
       </ul>
@@ -122,7 +131,7 @@
     <div class="section">
       <label class="label">
         文件
-        <el-button type="text" size="small" @click="addRelation(2)">添加</el-button>
+        <el-button type="text" size="small" @click="showSearch(4)">添加</el-button>
       </label>
 
       <ul class="list">
@@ -130,7 +139,7 @@
           <el-icon>
             <Paperclip />
           </el-icon>
-          #{{ rel.relation_id }}
+          #{{ rel.relation_id }} {{ rel.name }}
           <el-button type="text" size="small" style="float:right" @click.stop="deleteRelation(rel)">删除</el-button>
         </li>
       </ul>
@@ -138,12 +147,17 @@
 
     <div class="section">
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="全部" name="all"></el-tab-pane>
-        <el-tab-pane label="评论" name="comment"></el-tab-pane>
-        <el-tab-pane label="变更记录" name="changelog">
-          <TaskChangeLog ref="logCmp" v-if="localTask" :taskId="localTask.task_id || localTask.id" />
-        </el-tab-pane>
+        <el-tab-pane label="全部" name="all" />
+        <el-tab-pane label="评论" name="comment" />
+        <el-tab-pane label="变更记录" name="changelog" />
       </el-tabs>
+
+      <TaskChangeLog 
+        ref="logCmp" 
+        v-if="localTask" 
+        :taskId="localTask.task_id || -1" 
+        :mode="activeTab" 
+      />
     </div>
 
   </div>
@@ -153,7 +167,7 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits, computed } from 'vue'
+import { ref, watch, defineProps, defineEmits, computed, inject } from 'vue'
 import { CircleCheck, Flag, Tickets, Document, Paperclip } from '@element-plus/icons-vue'
 import { getStatus, showErrorMessage } from '../utils/utils'
 import api from '../utils/api'
@@ -213,7 +227,7 @@ async function saveTask(changedFields = null) {
   function hasChanges(fields) {
     if (!originalTask.value) return true
     if (!fields) {
-      const keys = ['task_name', 'status', 'priority', 'description']
+      const keys = ['task_name', 'status', 'priority', 'description', 'expire_at']
       return keys.some(k => originalTask.value[k] !== localTask.value[k])
     }
     return fields.some(k => originalTask.value[k] !== localTask.value[k])
@@ -230,12 +244,13 @@ async function saveTask(changedFields = null) {
     payload.status = localTask.value.status || localTask.value.state
     payload.priority = localTask.value.priority
     payload.description = localTask.value.description
+    payload.expire_at = localTask.value.expire_at
   }
 
   try {
     const res = await api.post('/api/task_update', payload)
     const j = res.data
-    if (j && j.r === 0) {
+      if (j && j.r === 0) {
       ElMessage.success('保存成功')
       try {
         originalTask.value = JSON.parse(JSON.stringify(localTask.value))
@@ -244,9 +259,7 @@ async function saveTask(changedFields = null) {
         originalTask.value = Object.assign({}, localTask.value)
       }
       emit('updated', JSON.parse(JSON.stringify(localTask.value)))
-      if (activeTab.value === 'changelog' &&
-        logCmp.value &&
-        typeof logCmp.value.reload === 'function') {
+      if (logCmp.value && typeof logCmp.value.reload === 'function') {
         try { logCmp.value.reload() } catch (e) { /* ignore reload errors */ }
       }
     } else {
@@ -264,7 +277,6 @@ function onStateChange(cmd) {
   localTask.value.state = v
   saveTask(['status'])
 }
-
 function onPriorityChange(cmd) {
   if (!localTask.value) return
   const v = Number(cmd)
@@ -285,10 +297,11 @@ async function onCompleteClick() {
   if (!localTask.value) return
   const payload = {
     project_id: localTask.value.project_id,
-    task_name: localTask.value.task_name || localTask.value.name,
+    task_name: localTask.value.task_name,
     description: localTask.value.description,
     priority: localTask.value.priority,
-    status: localTask.value.status || localTask.value.state,
+    status: localTask.value.status,
+    expire_at: localTask.value.expire_at,
   }
 
   try {
@@ -324,8 +337,8 @@ const relations = ref([])
 
 async function loadRelations() {
   if (!localTask.value) return
-  const taskId = localTask.value.task_id || localTask.value.id
-  const res = await api.get('/api/task_relation', { params: { taskId } })
+  const taskId = localTask.value.task_id
+  const res = await api.get('/api/task_relation', { params: { task_id: taskId } })
   relations.value = res.data?.data || []
 }
 
@@ -334,36 +347,49 @@ watch(() => props.task, () => {
 })
 
 const relatedTasks = computed(() =>
-  relations.value.filter(r => r.relation_type === 0)
-)
-const documents = computed(() =>
   relations.value.filter(r => r.relation_type === 1)
 )
-const files = computed(() =>
+const documents = computed(() =>
   relations.value.filter(r => r.relation_type === 2)
 )
+const files = computed(() =>
+  relations.value.filter(r => r.relation_type === 4)
+)
 
-async function addRelation(type) {
-  const taskId = localTask.value.task_id || localTask.value.id
-  const id = prompt("请输入关联项 ID：")
-  if (!id) return
+const openSearch = inject('openSearch', null)
 
-  try {
-    const res = await api.post('/api/task_relation_insert',
-      { task_id: taskId, relation_id: parseInt(id), relation_type: type })
-    if (res.data && res.data.r === 0) {
-      ElMessage.success("添加成功")
-      loadRelations()
-    } else {
-      showErrorMessage(ElMessage, res.data)
-    }
-  } catch (e) {
-    showErrorMessage(ElMessage, e)
+function showSearch(type) {
+  if (!openSearch) {
+    ElMessage.error('全局搜索不可用')
+    return
   }
+  openSearch({
+    onSelect: async (item) => {
+      if (!localTask.value) return
+      const taskId = localTask.value.task_id
+      const relationId = Number(item.entity_id)
+      if (!relationId) {
+        ElMessage.error('无效的关联 ID')
+        return
+      }
+      try {
+        const res = await api.post('/api/task_relation_insert',
+          { task_id: taskId, relation_id: relationId, relation_type: Number(type) })
+        if (res.data && res.data.r === 0) {
+          ElMessage.success('添加成功')
+          loadRelations()
+        } else {
+          showErrorMessage(ElMessage, res.data)
+        }
+      } catch (e) {
+        showErrorMessage(ElMessage, e)
+      }
+    }
+  })
 }
 
 async function deleteRelation(rel) {
-  const taskId = localTask.value.task_id || localTask.value.id
+  const taskId = localTask.value.task_id
 
   try {
     const res = await api.post('/api/task_relation_delete',

@@ -20,7 +20,7 @@ struct PAGE_REQ_HEADER
     UINT cbContent;     // 不含本结构
     ApiResult r;
     UINT r2;
-    // BYTE byContent[];
+    // BYTE byContent[cbContent];
 };
 
 EckInlineNdCe BOOL PrhCheckCrc32(const PAGE_REQ_HEADER* pHdr) noexcept
@@ -415,7 +415,7 @@ static void AwGetPageVersionList(const API_CTX& Ctx) noexcept
         }
 
         constexpr char Sql[]{ R"(
-SELECT ver_id, user_id, strftime('%s', create_at), description FROM PageVersion
+SELECT ver_id, user_id, create_at, description FROM PageVersion
 WHERE page_id = ?
 ORDER BY ver_id DESC
 LIMIT ? OFFSET ?

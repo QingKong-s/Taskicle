@@ -15,8 +15,9 @@ enum class DbRelationType
 {
     Min,
     Task,
-    Article,
+    Page,
     Tag,
+    File,
     Max,
 };
 enum class DbPageType

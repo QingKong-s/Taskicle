@@ -60,9 +60,8 @@ int AclDbOnEntityCreate(const API_CTX& Ctx, int iUserId) noexcept
 {
     constexpr char Sql[]{ R"(
 INSERT INTO Acl(user_id, entity_id, access)
-VALUES (?, (SELECT id FROM GlobalId), ?)
-)"
-"VALUES (" TKK_DBID_USER_ADMIN ", (SELECT id FROM GlobalId), " TKK_DBAC_ADMIN ")"
+VALUES (?, (SELECT id FROM GlobalId), ?),)"
+"(" TKK_DBID_USER_ADMIN ", (SELECT id FROM GlobalId), " TKK_DBAC_ADMIN ")"
     };
 
     sqlite3_stmt* pStmt;
