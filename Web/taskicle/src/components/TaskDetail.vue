@@ -171,7 +171,7 @@ import { ref, watch, defineProps, defineEmits, computed, inject } from 'vue'
 import { CircleCheck, Flag, Tickets, Document, Paperclip } from '@element-plus/icons-vue'
 import { getStatus, showErrorMessage } from '../utils/utils'
 import api from '../utils/api'
-import TaskChangeLog from './TaskChangeLog.vue'
+import TaskChangeLog from './TaskLogComment.vue'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({
