@@ -259,15 +259,12 @@ static void AwSavePage(const API_CTX& Ctx) noexcept
                 goto Exit;
             }
             // 保存后删除草稿
-            if (r != STATUS_ABANDONED)// 返回此值表示请求保存的内容与最新版本内容一致
+            rTmp = PageDbMarkDraft(Ctx.pExtra->pSqlite, pHdr->iPageId, FALSE);
+            if (rTmp != SQLITE_OK)
             {
-                rTmp = PageDbMarkDraft(Ctx.pExtra->pSqlite, pHdr->iPageId, FALSE);
-                if (rTmp != SQLITE_OK)
-                {
-                    rApi = ApiResult::Database;
-                    pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
-                    goto Exit;
-                }
+                rApi = ApiResult::Database;
+                pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
+                goto Exit;
             }
         }
         if (NT_SUCCESS(r = TxFile.Commit()))
@@ -295,6 +292,8 @@ static void AwLoadPage(const API_CTX& Ctx) noexcept
     eck::CRefBin rb{};
     const auto pHdr = rb.PushBack<PAGE_REQ_HEADER>();
     ZeroMemory(pHdr, sizeof(PAGE_REQ_HEADER));
+    pHdr->Magic = PrhMagic;
+    pHdr->eType = DbPageType::Markdown;// 目前仅支持Markdown
 
     std::vector<QUERY_KV> vKv{};
     ApiParseQueryString(Ctx, vKv);
@@ -346,13 +345,17 @@ static void AwLoadPage(const API_CTX& Ctx) noexcept
             pHdr->r2 = nts;
             goto Exit;
         }
-        // 请求方需要草稿，但实际没有草稿，视为无效请求
-        if (bTemp && !PageDbDraftExists(Ctx.pExtra->pSqlite, iPageId, rTmp))
+        if (bTemp)
         {
-            pHdr->r = ApiResult::NotFound;
-            pHdr->r2 = rTmp;
-            goto Exit;
+            bTemp = PageDbDraftExists(Ctx.pExtra->pSqlite, iPageId, rTmp);
+            if (rTmp != SQLITE_OK)
+            {
+                pHdr->r = ApiResult::Database;
+                pHdr->r2 = rTmp;
+                goto Exit;
+            }
         }
+        pHdr->bTemp = bTemp;
 
         eck::CRefBin rbFile{};
         nts = DiffLoadFile(TxFile, Dir.Get(),
@@ -467,6 +470,8 @@ static void AwGetPageVersionContent(const API_CTX& Ctx) noexcept
     eck::CRefBin rb{};
     const auto pHdr = rb.PushBack<PAGE_REQ_HEADER>();
     ZeroMemory(pHdr, sizeof(PAGE_REQ_HEADER));
+    pHdr->Magic = PrhMagic;
+    pHdr->eType = DbPageType::Markdown;// 目前仅支持Markdown
 
     std::vector<QUERY_KV> vKv{};
     ApiParseQueryString(Ctx, vKv);

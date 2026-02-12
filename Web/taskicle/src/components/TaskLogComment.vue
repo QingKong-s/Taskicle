@@ -122,11 +122,11 @@ const timeline = computed(() => {
       list.push({
         type: 'comment',
         uniqueId: `comm_${comm.comm_id}`,
-        rawId: comm.comm_id, // 保存原始ID用于API调用
+        rawId: comm.comm_id,
         time: Number(comm.create_at),
         userName: comm.user_name,
         content: comm.content,
-        modified: !!comm.modified // 转换 modified 字段
+        modified: !!comm.modified
       })
     })
   }
@@ -220,13 +220,10 @@ function onScroll(e) {
   }
 }
 
-// 新增评论
 async function addComment() {
   if (!newComment.value.trim() || props.taskId < 0) return
   submitting.value = true
   try {
-    // 尽管文档中Insert的参数写了comm_id，但按照常规逻辑和现有代码，此处应该是 task_id
-    // 如果后端严格要求 comm_id 代表任务ID，请保持现状，否则可能需要根据实际情况调整
     await api.post('/api/task_comm_insert', { task_id: props.taskId, content: newComment.value })
     newComment.value = ''
     await fetchData(false)
@@ -347,15 +344,15 @@ defineExpose({ reload: () => fetchData(false) })
 
 .avatar {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .body {
@@ -388,14 +385,13 @@ defineExpose({ reload: () => fetchData(false) })
 }
 
 .comm-actions {
-  margin-left: auto; /* 推到右侧 */
+  margin-left: auto;
   opacity: 0;
   transition: opacity 0.2s;
   display: flex;
   gap: 4px;
 }
 
-/* 鼠标悬停在条目上时显示操作按钮 */
 .timeline-item:hover .comm-actions {
   opacity: 1;
 }

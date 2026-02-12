@@ -6,36 +6,51 @@
           + 新建任务
         </el-button>
       </div>
-      <el-table class="left" :show-header="false" :data="tableData" @row-click="onRowClick" style="width: 100%"
-        :row-style="getColor">
-        <el-table-column>
-          <template #default="scope">
-            <div class="row">
-              <span class="capsule id-capsule">#{{ scope.row.task_id }}</span>
+      
+      <div class="table-wrapper" 
+           v-infinite-scroll="loadMore" 
+           :infinite-scroll-disabled="scrollDisabled"
+           :infinite-scroll-distance="20">
+        <el-table 
+          class="left" 
+          :show-header="false" 
+          :data="tableData" 
+          @row-click="onRowClick" 
+          style="width: 100%"
+          :row-style="getColor"
+        >
+          <el-table-column>
+            <template #default="scope">
+              <div class="row">
+                <span class="capsule id-capsule">#{{ scope.row.task_id }}</span>
+                <span class="capsule priority-capsule" :style="{
+                  background: getStatus('priority', scope.row.priority).background,
+                  color: getStatus('priority', scope.row.priority).color
+                }">
+                  {{ getStatus('priority', scope.row.priority).text }}
+                </span>
+                <span class="task-name" :title="scope.row.task_name">{{ scope.row.task_name }}</span>
+                
+                <span v-if="getExpireText(scope.row)" class="capsule expire-capsule" :class="getExpireClass(scope.row)">
+                  {{ getExpireText(scope.row) }}
+                </span>
 
-              <span class="capsule priority-capsule" :style="{
-                background: getStatus('priority', scope.row.priority).background,
-                color: getStatus('priority', scope.row.priority).color
-              }">
-                {{ getStatus('priority', scope.row.priority).text }}
-              </span>
-
-              <span class="task-name" :title="scope.row.name">{{ scope.row.task_name }}</span>
-
-              <span v-if="getExpireText(scope.row)" class="capsule expire-capsule" :class="getExpireClass(scope.row)">
-                {{ getExpireText(scope.row) }}
-              </span>
-
-              <span class="capsule state-capsule" :style="{
-                background: getStatus('state', scope.row.status).background,
-                color: getStatus('state', scope.row.status).color
-              }">
-                {{ getStatus('state', scope.row.status).text }}
-              </span>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+                <span class="capsule state-capsule" :style="{
+                  background: getStatus('state', scope.row.status).background,
+                  color: getStatus('state', scope.row.status).color
+                }">
+                  {{ getStatus('state', scope.row.status).text }}
+                </span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <div class="load-status">
+          <p v-if="loading">加载中...</p>
+          <p v-if="noMore && tableData.length > 0">没有更多了</p>
+        </div>
+      </div>
     </div>
     <Splitter @ondrag="onDrag" />
     <TaskDetail class="right" :task="selectedTask" @updated="onTaskUpdated" @deleted="onDeleteTask"
@@ -46,7 +61,7 @@
 <script setup>
 import TaskDetail from './TaskDetail.vue';
 import Splitter from './SplitBar.vue';
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../utils/api'
@@ -66,6 +81,12 @@ function computeDefaultWidth() {
 const route = useRoute()
 const router = useRouter()
 const selectedTask = ref(null)
+const pageSize = 50;
+const page = ref(0);
+const loading = ref(false);
+const noMore = ref(false);
+
+const scrollDisabled = computed(() => loading.value || noMore.value);
 
 onMounted(() => {
   leftWidth.value = computeDefaultWidth();
@@ -89,37 +110,70 @@ function onDrag(movementX) {
   leftWidth.value = Math.max(200, leftWidth.value + movementX);
 }
 
-async function fetchTasksForProject(projId) {
+async function fetchTasksForProject(projId, isAppend = false) {
   if (!projId) {
-    tableData.value = []
-    selectedTask.value = null
-    return
+    tableData.value = [];
+    selectedTask.value = null;
+    return;
   }
+
+  if (!isAppend) {
+    page.value = 0;
+    noMore.value = false;
+  }
+
+  loading.value = true;
   try {
-    const res = await api.get('/api/task_list',
-      { params: { project_id: projId, count: 100, page: 0 } })
-    const j = res.data
+    const res = await api.get('/api/task_list', { 
+      params: { 
+        project_id: projId, 
+        count: pageSize, 
+        page: page.value 
+      } 
+    });
+    
+    const j = res.data;
     if (j && j.r === 0) {
-      const items = (j.data || []).map(it => ({ ...it, project_id: projId }))
-      tableData.value = items
-      if (items.length) {
-        const taskId = route.query.task
-        if (taskId) {
-          const task = items.find(item => String(item.task_id) === String(taskId))
-          selectedTask.value = task || items[0]
-        } else {
-          selectedTask.value = items[0]
-        }
+      const items = (j.data || []).map(it => ({ ...it, project_id: projId }));
+      
+      if (isAppend) {
+        tableData.value.push(...items);
       } else {
-        selectedTask.value = null
+        tableData.value = items;
+        handleDefaultSelection(items);
+      }
+
+      if (items.length < pageSize) {
+        noMore.value = true;
       }
     } else {
-      tableData.value = []
-      showErrorMessage(ElMessage, j)
+      showErrorMessage(ElMessage, j);
     }
   } catch (e) {
-    tableData.value = []
-    showErrorMessage(ElMessage, e)
+    showErrorMessage(ElMessage, e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadMore() {
+  if (scrollDisabled.value) return;
+  page.value++;
+  const projId = parseInt(route.query.project);
+  await fetchTasksForProject(projId, true);
+}
+
+function handleDefaultSelection(items) {
+  if (items.length) {
+    const taskId = route.query.task;
+    if (taskId) {
+      const task = items.find(item => String(item.task_id) === String(taskId));
+      selectedTask.value = task || items[0];
+    } else {
+      selectedTask.value = items[0];
+    }
+  } else {
+    selectedTask.value = null;
   }
 }
 
@@ -188,15 +242,14 @@ function getExpireText(row) {
   const now = Date.now()
   const diffMs = expire - now
   const dayMs = 1000 * 60 * 60 * 24
+  const diffDays = Math.max(1, Math.ceil(Math.abs(diffMs) / dayMs))
   if (diffMs >= 0) {
-    const diffDays = Math.ceil(diffMs / dayMs)
     if (diffDays < 5) {
       return `${diffDays}天后过期`
     }
     return ''
   } else {
-    const daysExpired = Math.floor(Math.abs(diffMs) / dayMs)
-    const display = daysExpired > 99 ? '99+' : String(daysExpired)
+    const display = diffDays > 99 ? '99+' : String(diffDays)
     return `过期${display}天`
   }
 }
@@ -204,18 +257,17 @@ function getExpireText(row) {
 function getExpireClass(row) {
   if (!row) return ''
   const v = row.expire_at
-  if (v === undefined || v === null || v === '') return ''
   const expire = Number(v)
   if (!expire) return ''
+  
   const now = Date.now()
+  if (now > expire) return 'expired'
+
   const diffMs = expire - now
   const dayMs = 1000 * 60 * 60 * 24
-  if (diffMs >= 0) {
-    const diffDays = Math.floor(diffMs / dayMs)
-    if (diffDays < 5) return 'soon'
-    return ''
-  }
-  return 'expired'
+  if (diffMs / dayMs < 5) return 'soon'
+  
+  return ''
 }
 
 function onTaskUpdated(updated) {
@@ -250,10 +302,23 @@ const tableData = ref([
   overflow: hidden;
 }
 
+.table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .left {
   border-right: 1px solid #ebeef5;
-  height: 100%;
-  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.load-status {
+  padding: 15px;
+  text-align: center;
+  color: #909399;
+  font-size: 13px;
 }
 
 .left-panel {

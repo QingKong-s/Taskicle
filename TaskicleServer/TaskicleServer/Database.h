@@ -33,6 +33,7 @@ enum class DbUserRole
     Admin,
     Max,
 };
+#define TKK_DBUR_ADMIN      "2"
 enum class DbCoreEntity
 {
     Min,
@@ -78,7 +79,8 @@ enum class DbAccess : UINT
 };
 ECK_ENUM_BIT_FLAGS(DbAccess);
 
-#define TKK_DBAC_ADMIN "2"
+#define TKK_DBAC_ADMIN      "2"
+#define TKK_DBAC_FULLCTRL   "3"
 
 int DbOpenFirst(std::wstring_view svFile, _Out_ sqlite3*& pSqlite) noexcept;
 int DbOpen(_Out_ sqlite3*& pSqlite) noexcept;

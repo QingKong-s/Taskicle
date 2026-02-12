@@ -583,11 +583,12 @@ provide('openSearch', ({ onSelect } = {}) => {
 
 .menu-item-actions {
   display: flex;
-  gap: 6px;
 }
 
-.menu-item-actions .el-button {
-  max-width: 8px;
+.edit-btn {
+  max-width: 10px;
+  margin: 0;
+  padding: 0;
 }
 
 .menu-item-row .menu-item-actions {

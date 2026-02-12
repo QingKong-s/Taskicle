@@ -13,21 +13,21 @@ BOOL AclDbCheckAccess(const API_CTX& Ctx, int iUserId,
         return TRUE;
     }
 
-    constexpr char Sql[]{ R"(
+    constexpr char Sql[]{ R"sql(
 SELECT 
     CASE 
-        WHEN u.role = 2 THEN 1
+        WHEN u.role = )sql" TKK_DBUR_ADMIN R"sql( THEN 1
         ELSE (
             SELECT COUNT(*)
             FROM Acl a
             WHERE (a.user_id = :uid
                 AND a.entity_id = :eid
-                AND ((a.access & :e) = :e) OR (a.access & 3) != 0)
+                AND ((a.access & :e) = :e) OR (a.access & )sql" TKK_DBAC_FULLCTRL R"sql( != 0))
         )
     END AS has_access
 FROM User u
 WHERE u.user_id = :uid;
-)" };
+)sql" };
 
     sqlite3_stmt* pStmt;
     r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
