@@ -158,7 +158,7 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_InsertTask, AwInsertTask)
 
-// Task: DeleteMe
+// Task: Delete
 static void AwDeleteTask(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -180,7 +180,7 @@ static void AwDeleteTask(const API_CTX& Ctx) noexcept
         }
 
         if (!AclDbCheckCurrentUserAccess(Ctx,
-            ValId.GetInt(), DbAccess::DeleteMe, r))
+            ValId.GetInt(), DbAccess::Delete, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;

@@ -140,22 +140,22 @@ int CkDbGetCurrentUser(const API_CTX& Ctx) noexcept
 {
     PCSTR pszCookie;
     if (!Ctx.pSender->GetHeader(Ctx.dwConnId, "Cookie", &pszCookie))
-        return DbIdUserEveryone;
+        return DbIdUserGuest;
     auto pBegin = eck::TcsStrI(pszCookie, "sid=");
     if (!pBegin)
-        return DbIdUserEveryone;
+        return DbIdUserGuest;
     pBegin += 4;
     auto pEnd = eck::TcsChar(pBegin, ';');
     if (!pEnd)
         pEnd = pBegin + eck::TcsLen(pBegin);
     const auto cchSid = pEnd - pBegin;
     if (cchSid != CkSidStrLen)
-        return DbIdUserEveryone;
+        return DbIdUserGuest;
     int iUserId;
     CkDbQuerySessionId(Ctx, pBegin, iUserId);
     if (iUserId != DbIdInvalid)
         return iUserId;
-    return DbIdUserEveryone;
+    return DbIdUserGuest;
 }
 
 int CkDbGetCurrentPseudoUser(const API_CTX& Ctx) noexcept
@@ -179,7 +179,7 @@ BOOL UmIsAdministrator(const API_CTX& Ctx, int id) noexcept
     sqlite3_bind_int(pStmt, 1, id);
     if (sqlite3_step(pStmt) == SQLITE_ROW)
     {
-        r = sqlite3_column_int(pStmt, 2);
+        r = sqlite3_column_int(pStmt, 0);
         sqlite3_finalize(pStmt);
         return r == (int)DbUserRole::Admin;
     }

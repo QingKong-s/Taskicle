@@ -238,7 +238,7 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_UpdateTaskComment, AwUpdateTaskComment)
 
-// Task: ReadComment
+// Task: ReadContent
 static void AwGetTaskCommentList(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -267,7 +267,7 @@ static void AwGetTaskCommentList(const API_CTX& Ctx) noexcept
     if (iTaskId != DbIdInvalid)
     {
         if (!AclDbCheckCurrentUserAccess(Ctx,
-            iTaskId, DbAccess::ReadComment, r))
+            iTaskId, DbAccess::ReadContent, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;

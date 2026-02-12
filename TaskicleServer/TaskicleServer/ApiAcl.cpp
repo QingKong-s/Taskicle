@@ -22,7 +22,7 @@ SELECT
             FROM Acl a
             WHERE (a.user_id = :uid
                 AND a.entity_id = :eid
-                AND ((a.access & :e) = :e) OR (a.access & )sql" TKK_DBAC_FULLCTRL R"sql( != 0))
+                AND (a.access & :e = :e OR a.access & )sql" TKK_DBAC_FULLCTRL R"sql( != 0))
         )
     END AS has_access
 FROM User u
@@ -70,7 +70,7 @@ VALUES (?, (SELECT id FROM GlobalId), ?),)"
     if (r != SQLITE_OK)
         return r;
     sqlite3_bind_int(pStmt, 1, iUserId);
-    sqlite3_bind_int(pStmt, 2, int(DbAccess::Owner | DbAccess::Admin));
+    sqlite3_bind_int(pStmt, 2, (int)DbAccess::Owner);
     r = sqlite3_step(pStmt);
     sqlite3_finalize(pStmt);
     if (r == SQLITE_DONE)
@@ -122,7 +122,7 @@ static void AwModifyAccess(const API_CTX& Ctx) noexcept
         }
 
         const auto iEntityId = ValEntity.GetInt();
-        if (!AclDbCheckCurrentUserAccess(Ctx, iEntityId, DbAccess::WriteAcl, r))
+        if (!AclDbCheckCurrentUserAccess(Ctx, iEntityId, DbAccess::None, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;

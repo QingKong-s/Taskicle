@@ -87,7 +87,7 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_InsertPage, AwInsertPage)
 
-// Page: WriteContent
+// Page: Rename
 static void AwUpdatePage(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -110,7 +110,7 @@ static void AwUpdatePage(const API_CTX& Ctx) noexcept
         }
 
         if (!AclDbCheckCurrentUserAccess(Ctx,
-            ValId.GetInt(), DbAccess::WriteContent, r))
+            ValId.GetInt(), DbAccess::Rename, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;
@@ -149,7 +149,7 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_UpdatePage, AwUpdatePage)
 
-// Page: DeleteMe
+// Page: Delete
 static void AwDeletePage(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -171,7 +171,7 @@ static void AwDeletePage(const API_CTX& Ctx) noexcept
         }
 
         if (!AclDbCheckCurrentUserAccess(Ctx,
-            ValId.GetInt(), DbAccess::DeleteMe, r))
+            ValId.GetInt(), DbAccess::Delete, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;

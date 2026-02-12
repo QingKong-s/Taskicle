@@ -66,7 +66,7 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_InsertPageGroup, AwInsertPageGroup)
 
-// PageGroup: DeleteMe
+// PageGroup: Delete
 static void AwDeletePageGroup(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -88,7 +88,7 @@ static void AwDeletePageGroup(const API_CTX& Ctx) noexcept
         }
 
         if (!AclDbCheckCurrentUserAccess(Ctx,
-            ValId.GetInt(), DbAccess::DeleteMe, r))
+            ValId.GetInt(), DbAccess::Delete, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;

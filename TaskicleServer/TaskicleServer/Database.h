@@ -4,7 +4,7 @@
 constexpr inline int DbIdInvalid = -1;
 constexpr inline int DbIdContainerPageGroup = -2;
 constexpr inline int DbIdContainerProject = -3;
-constexpr inline int DbIdUserEveryone = -4;
+constexpr inline int DbIdUserGuest = -4;
 constexpr inline int DbIdUserAdmin = -5;
 
 #define TKK_DBID_USER_ADMIN "-5"
@@ -51,36 +51,30 @@ enum class DbAccess : UINT
     None = 0,
     // 此权限可进行所有操作，不能将其用于DbIdEveryone
     Owner = (1u << 0),
-    // 与Owner相同，区别是Owner不能被移除，并且表示创建者的特殊含义
-    Admin = (1u << 1),
     // 不适用于PageGroup/Project
-    ReadContent = (1u << 8),
+    ReadContent = (1u << 1),
     // 不适用于PageGroup/Project
-    WriteContent = (1u << 9),
+    WriteContent = (1u << 2),
     // 删除实体本身
-    DeleteMe = (1u << 10),
-    // 没有修改记录的实体不适用
-    ReadChange = (1u << 11),
+    Delete = (1u << 3),
     // 仅Task
-    ReadComment = (1u << 12),
-    // 仅Task
-    WriteComment = (1u << 13),
+    WriteComment = (1u << 4),
     //
-    Rename = (1u << 14),
+    Rename = (1u << 5),
     // 以下仅适用于组
     // 判断是否可操作页面/任务，使用对应PageGroup/Project的ID
     // 判断是否可操作组，使用DbIdContainerPageGroup/DbIdContainerProject
-    CreateEntity = (1u << 15),
-    DeleteEntity = (1u << 16),
-    // 修改权限
-    WriteAcl = (1u << 17),
+    CreateEntity = (1u << 6),
+    DeleteEntity = (1u << 7),
+    // 没有修改记录的实体不适用
+    ReadChange = (1u << 8),
 
-    FullControl = Owner | Admin,
+    FullControl = Owner,
 };
 ECK_ENUM_BIT_FLAGS(DbAccess);
 
-#define TKK_DBAC_ADMIN      "2"
-#define TKK_DBAC_FULLCTRL   "3"
+#define TKK_DBAC_ADMIN      "1"
+#define TKK_DBAC_FULLCTRL   "1"
 
 int DbOpenFirst(std::wstring_view svFile, _Out_ sqlite3*& pSqlite) noexcept;
 int DbOpen(_Out_ sqlite3*& pSqlite) noexcept;
