@@ -41,6 +41,7 @@ enum class DbCoreEntity
     Page,
     Project,
     Task,
+    User,
     Max
 };
 
@@ -57,17 +58,19 @@ enum class DbAccess : UINT
     WriteContent = (1u << 2),
     // 删除实体本身
     Delete = (1u << 3),
+    // 没有修改记录的实体不适用
+    ReadChange = (1u << 4),
     // 仅Task
-    WriteComment = (1u << 4),
+    WriteComment = (1u << 5),
     //
-    Rename = (1u << 5),
+    Rename = (1u << 6),
     // 以下仅适用于组
     // 判断是否可操作页面/任务，使用对应PageGroup/Project的ID
     // 判断是否可操作组，使用DbIdContainerPageGroup/DbIdContainerProject
-    CreateEntity = (1u << 6),
-    DeleteEntity = (1u << 7),
-    // 没有修改记录的实体不适用
-    ReadChange = (1u << 8),
+    CreateEntity = (1u << 7),
+    DeleteEntity = (1u << 8),
+    // 不进入数据库，仅用于忽略掩码检查，仅执行管理员和所有者检查时使用
+    Unused = (1u << 9),
 
     FullControl = Owner,
 };

@@ -95,7 +95,6 @@ DELETE FROM Acl WHERE entity_id = ?;
     return r;
 }
 
-// Entity: WriteAcl
 static void AwModifyAccess(const API_CTX& Ctx) noexcept
 {
     ApiResult rApi{ ApiResult::Ok };
@@ -115,21 +114,21 @@ static void AwModifyAccess(const API_CTX& Ctx) noexcept
             goto Exit;
         }
         if (!ValUser.IsInt() || !ValEntity.IsInt() ||
-            !ValAccess.IsInt() || !(ValIsRemove.IsInt() || ValIsRemove.IsBool()))
+            !ValAccess.IsInt() || !ValIsRemove.IsBool())
         {
             rApi = ApiResult::TypeMismatch;
             goto Exit;
         }
 
         const auto iEntityId = ValEntity.GetInt();
-        if (!AclDbCheckCurrentUserAccess(Ctx, iEntityId, DbAccess::None, r))
+        if (!AclDbCheckCurrentUserAccess(Ctx, iEntityId, DbAccess::Unused, r))
         {
             rApi = ApiResult::AccessDenied;
             goto Exit;
         }
 
         auto eAccess = (DbAccess)ValAccess.GetInt();
-        eAccess &= ~DbAccess::Owner;
+        eAccess &= ~(DbAccess::Owner | DbAccess::Unused);
         if (eAccess == DbAccess::None)
         {
             rApi = ApiResult::NoEffect;
@@ -137,7 +136,13 @@ static void AwModifyAccess(const API_CTX& Ctx) noexcept
         }
 
         const auto iUserId = ValUser.GetInt();
-        const auto bRemove = !!ValIsRemove.GetInt();
+        const auto bRemove = ValIsRemove.GetBool();
+        // 不能修改管理员和所有者
+        if (AclDbCheckAccess(Ctx, iUserId, iEntityId, DbAccess::Unused, r))
+        {
+            rApi = ApiResult::AccessDenied;
+            goto Exit;
+        }
 
         sqlite3_stmt* pStmt;
         if (bRemove)
@@ -172,9 +177,6 @@ WHERE user_id = ? AND entity_id = ?;
             r = SQLITE_OK;
         else
             pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
-
-        if (r == SQLITE_OK && !sqlite3_changes(Ctx.pExtra->pSqlite))
-            rApi = ApiResult::NoEffect;
     }
     else
         rApi = ApiResult::BadPayload;
@@ -188,6 +190,86 @@ Exit:
     ApiSendResponseJson(Ctx, j);
 }
 TKK_API_DEF_ENTRY(ApiPost_ModifyAccess, AwModifyAccess)
+
+static void AwModifyAccessUser(const API_CTX& Ctx) noexcept
+{
+    ApiResult rApi{ ApiResult::Ok };
+    int r{};
+    PCSTR pszErrMsg{};
+
+    if (Json::CDoc jIn{ Ctx.pExtra->rbBody }; jIn.IsValid())
+    {
+        const auto ValUser = jIn["/user_id"];
+        const auto ValEntity = jIn["/entity_id"];
+        const auto ValIsRemove = jIn["/is_remove"];
+        if (!ValUser.IsValid() || !ValEntity.IsValid() ||
+            !ValIsRemove.IsValid())
+        {
+            rApi = ApiResult::RequiredFieldMissing;
+            goto Exit;
+        }
+        if (!ValUser.IsInt() || !ValEntity.IsInt() ||
+            !ValIsRemove.IsBool())
+        {
+            rApi = ApiResult::TypeMismatch;
+            goto Exit;
+        }
+
+        const auto iEntityId = ValEntity.GetInt();
+        if (!AclDbCheckCurrentUserAccess(Ctx, iEntityId, DbAccess::Unused, r))
+        {
+            rApi = ApiResult::AccessDenied;
+            goto Exit;
+        }
+
+        const auto iUserId = ValUser.GetInt();
+        const auto bRemove = ValIsRemove.GetBool();
+        // 不能修改管理员和所有者
+        if (AclDbCheckAccess(Ctx, iUserId, iEntityId, DbAccess::Unused, r))
+        {
+            rApi = ApiResult::AccessDenied;
+            goto Exit;
+        }
+
+        sqlite3_stmt* pStmt;
+        if (bRemove)
+        {
+            constexpr char Sql[]{ "DELETE FROM Acl WHERE user_id = ? AND entity = ?" };
+            r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
+                EckStrAndLen(Sql), 0, &pStmt, nullptr);
+        }
+        else
+        {
+            constexpr char Sql[]{ "INSERT INTO Acl (user_id, entity_id) VALUES (?, ?)" };
+            r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
+                EckStrAndLen(Sql), 0, &pStmt, nullptr);
+        }
+        if (r != SQLITE_OK)
+        {
+            pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
+            goto Exit;
+        }
+        sqlite3_bind_int(pStmt, 1, iUserId);
+        sqlite3_bind_int(pStmt, 2, iEntityId);
+        r = sqlite3_step(pStmt);
+        sqlite3_finalize(pStmt);
+        if (r == SQLITE_DONE)
+            r = SQLITE_OK;
+        else
+            pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
+    }
+    else
+        rApi = ApiResult::BadPayload;
+Exit:
+    Json::CMutDoc j{};
+    j = {
+        "r", r == SQLITE_OK ? rApi : ApiResult::Database,
+        "r2", r,
+        "err_msg", pszErrMsg,
+    };
+    ApiSendResponseJson(Ctx, j);
+}
+TKK_API_DEF_ENTRY(ApiPost_ModifyAccessUser, AwModifyAccessUser)
 
 // 无权限要求
 static void AwGetAcl(const API_CTX& Ctx) noexcept

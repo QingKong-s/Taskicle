@@ -16,7 +16,12 @@
             </template>
 
             <div class="menu-footer">
-              <el-button type="text" icon="plus" @click="onAddPageGroup">+ 新建页面组</el-button>
+              <el-button type="text" icon="plus" @click="onAddPageGroup">
+                <el-icon>
+                  <Plus />
+                </el-icon>
+                新建页面组
+              </el-button>
             </div>
 
             <el-menu-item v-for="g in pageGroups" :key="g.page_group_id" :index="`articles:group:${g.page_group_id}`"
@@ -47,7 +52,12 @@
             </template>
 
             <div class="menu-footer">
-              <el-button type="text" icon="plus" @click="onAddProject">+ 新建项目</el-button>
+              <el-button type="text" icon="plus" @click="onAddProject">
+                <el-icon>
+                  <Plus />
+                </el-icon>
+                新建项目
+              </el-button>
             </div>
 
             <el-menu-item v-for="p in projects" :key="p.project_id" :index="`tasks:project:${p.project_id}`"
@@ -83,11 +93,11 @@
         </el-menu-item>
 
         <el-menu-item class="menu-item-row">
-          <el-button type="text" @click.stop="onWorkbench">
+          <el-button type="text" @click.stop="onAccess">
             <el-icon>
-              <Grid />
+              <Key />
             </el-icon>
-            <span class="menu-item-name">工作台</span>
+            <span class="menu-item-name">管理访问权限</span>
           </el-button>
         </el-menu-item>
 
@@ -135,6 +145,7 @@
       <router-view />
 
       <SearchPopup v-model="searchVisible" @select="onSearchSelect" />
+      <PermissionEditor v-model="showPermissionDialog" />
 
       <el-dialog v-model="loginDialogVisible" width="420px" :close-on-click-modal="false">
         <template #title>
@@ -192,12 +203,13 @@
 import Splitter from './SplitBar.vue';
 import { ref, onMounted, reactive, computed, provide } from 'vue';
 import { useRoute } from 'vue-router'
-import { Notebook, DocumentChecked, Edit, Delete, Setting, User, Search, Grid } from '@element-plus/icons-vue'
+import { Notebook, DocumentChecked, Edit, Delete, Setting, User, Search, Key, Plus } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../utils/api'
 import { showAxiosErrorMessage, showErrorMessage } from '@/utils/utils';
 import SearchPopup from './SearchPopup.vue'
+import PermissionEditor from './PermissionEditor.vue';
 
 const leftWidth = ref(200);
 
@@ -489,10 +501,11 @@ function onSearch() {
   searchVisible.value = true
 }
 
-function onWorkbench() {
-
+function onAccess() {
+  showPermissionDialog.value = true
 }
 
+const showPermissionDialog = ref(false)
 const searchVisible = ref(false)
 const pendingSelectHandler = ref(null)
 

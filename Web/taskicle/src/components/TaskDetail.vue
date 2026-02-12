@@ -372,6 +372,11 @@ function showSearch(type) {
         ElMessage.error('无效的关联 ID')
         return
       }
+      if ((type === 1 && item.type != 4) ||
+          (type === 2 && item.type != 2)) {
+        ElMessage.error('无效实体类型')
+        return
+      }
       try {
         const res = await api.post('/api/task_relation_insert',
           { task_id: taskId, relation_id: relationId, relation_type: Number(type) })

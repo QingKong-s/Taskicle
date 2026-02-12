@@ -88,4 +88,5 @@ EnHttpParseResult ApiGet_SearchEntity(const API_CTX& Ctx) noexcept;
 // Acl
 
 EnHttpParseResult ApiPost_ModifyAccess(const API_CTX& Ctx) noexcept;
+EnHttpParseResult ApiPost_ModifyAccessUser(const API_CTX& Ctx) noexcept;
 EnHttpParseResult ApiGet_Acl(const API_CTX& Ctx) noexcept;

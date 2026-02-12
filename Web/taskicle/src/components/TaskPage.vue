@@ -3,7 +3,10 @@
     <div class="left-panel" :style="{ width: leftWidth + 'px' }">
       <div class="left-toolbar">
         <el-button class="new-task-btn" type="primary" @click="onCreateTask">
-          + 新建任务
+          <el-icon>
+            <Plus />
+          </el-icon>
+          新建任务
         </el-button>
       </div>
       
@@ -62,6 +65,7 @@
 import TaskDetail from './TaskDetail.vue';
 import Splitter from './SplitBar.vue';
 import { ref, onMounted, watch, computed } from 'vue';
+import { Plus } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import api from '../utils/api'

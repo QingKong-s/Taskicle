@@ -33,14 +33,25 @@ static void AwSearchEntity(const API_CTX& Ctx) noexcept
     if (!svKeyword.empty())
     {
         constexpr char Sql[]{ R"(
-SELECT s.*
-FROM CoreEntity s
-JOIN Acl a ON a.entity_id = s.entity_id
+SELECT * FROM (
+    SELECT s.entity_id, s.type, s.name, s.create_at, s.container_id
+    FROM CoreEntity s
+    JOIN Acl a ON a.entity_id = s.entity_id
+    WHERE
+        a.user_id = ?
+        AND (a.access & ?) != 0
+UNION ALL
+    SELECT
+        user_id     AS entity_id,
+        5           AS type,
+        user_name   AS name,
+        create_at,
+        -1          AS container_id
+    FROM User
+) AS combined
 WHERE
-    a.user_id = ?
-    AND (a.access & ?) != 0
-    AND (s.name LIKE ? OR s.entity_id = ?)
-ORDER BY s.entity_id
+    (name LIKE ? OR entity_id = ?)
+ORDER BY entity_id
 LIMIT ? OFFSET ?;
 )" };
         sqlite3_stmt* pStmt;

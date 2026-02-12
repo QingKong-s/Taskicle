@@ -59,6 +59,7 @@ function typeText(t) {
   if (t === 2) return '页面'
   if (t === 3) return '项目'
   if (t === 4) return '任务'
+  if (t === 5) return '用户'
   return String(t)
 }
 

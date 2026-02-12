@@ -5,6 +5,48 @@
 
 constexpr static size_t MaxBodySize = 2 * 1024 * 1024;
 
+using FApiEntry = EnHttpParseResult(*)(const API_CTX&);
+const static std::unordered_map<std::string_view, FApiEntry> ApiMap
+{
+    { "/index.html"sv,               ApiGet_Index               },
+    { "/article"sv,                  ApiGet_Index               },
+    { "/task"sv,                     ApiGet_Index               },
+    { "/api/proj_insert"sv,          ApiPost_InsertProject      },
+    { "/api/proj_delete"sv,          ApiPost_DeleteProject      },
+    { "/api/proj_update"sv,          ApiPost_UpdateProject      },
+    { "/api/proj_list"sv,            ApiGet_ProjectList         },
+    { "/api/task_insert"sv,          ApiPost_InsertTask         },
+    { "/api/task_delete"sv,          ApiPost_DeleteTask         },
+    { "/api/task_update"sv,          ApiPost_UpdateTask         },
+    { "/api/task_list"sv,            ApiGet_TaskList            },
+    { "/api/task_comm_insert"sv,     ApiPost_InsertTaskComment  },
+    { "/api/task_comm_delete"sv,     ApiPost_DeleteTaskComment  },
+    { "/api/task_comm_update"sv,     ApiPost_UpdateTaskComment  },
+    { "/api/task_comm_list"sv,       ApiGet_TaskCommentList     },
+    { "/api/task_log"sv,             ApiGet_TaskLogList         },
+    { "/api/task_relation_insert"sv, ApiPost_InsertTaskRelation },
+    { "/api/task_relation_delete"sv, ApiPost_DeleteTaskRelation },
+    { "/api/task_relation"sv,        ApiGet_TaskRelationList    },
+    { "/api/page_group_insert"sv,    ApiPost_InsertPageGroup    },
+    { "/api/page_group_delete"sv,    ApiPost_DeletePageGroup    },
+    { "/api/page_group_update"sv,    ApiPost_UpdatePageGroup    },
+    { "/api/page_group_list"sv,      ApiGet_PageGroupList       },
+    { "/api/page_insert"sv,          ApiPost_InsertPage         },
+    { "/api/page_delete"sv,          ApiPost_DeletePage         },
+    { "/api/page_update"sv,          ApiPost_UpdatePage         },
+    { "/api/page_list"sv,            ApiGet_PageList            },
+    { "/api/page_save"sv,            ApiPost_PageSave           },
+    { "/api/page_load"sv,            ApiGet_PageLoad            },
+    { "/api/page_version_list"sv,    ApiGet_PageVersionList     },
+    { "/api/page_version_content"sv, ApiGet_PageVersionContent  },
+    { "/api/login"sv,                ApiGet_Login               },
+    { "/api/register"sv,             ApiPost_Register           },
+    { "/api/search"sv,               ApiGet_SearchEntity        },
+    { "/api/acl"sv,                  ApiGet_Acl                 },
+    { "/api/modify_acl"sv,           ApiPost_ModifyAccess       },
+    { "/api/modify_acl_user"sv,      ApiPost_ModifyAccessUser   },
+};
+
 EnHttpParseResult CServer::OnHeadersComplete(IHttpServer* pSender, CONNID dwConnId)
 {
     LOGI << dwConnId;
@@ -38,94 +80,23 @@ EnHttpParseResult CServer::OnMessageComplete(IHttpServer* pSender, CONNID dwConn
     const auto pszPath = pSender->GetUrlField(dwConnId, HUF_PATH);
     const auto cchPath = eck::TcsLen(pszPath);
 
+    eck::CRefStrA rsPathLower(cchPath);
+    for (size_t i{}; auto& e : rsPathLower)
+        e = eck::TchToLower(pszPath[i++]);
+
     const API_CTX Ctx
     {
         .pSender = pSender,
         .dwConnId = dwConnId,
         .pExtra = pExtra,
     };
-#define TKK_HIT_PATH(x) eck::TcsIsStartWithLen2I(pszPath, cchPath, EckStrAndLen(x))
 
-    if ((cchPath == 1 && *pszPath == '/') ||
-        TKK_HIT_PATH("/index.html") ||
-        TKK_HIT_PATH("/article") ||
-        TKK_HIT_PATH("/task"))
+    if (cchPath == 1 && *pszPath == '/')
         return ApiGet_Index(Ctx);
-
-    else if (TKK_HIT_PATH("/api/proj_insert"))
-        return ApiPost_InsertProject(Ctx);
-    else if (TKK_HIT_PATH("/api/proj_delete"))
-        return ApiPost_DeleteProject(Ctx);
-    else if (TKK_HIT_PATH("/api/proj_update"))
-        return ApiPost_UpdateProject(Ctx);
-    else if (TKK_HIT_PATH("/api/proj_list"))
-        return ApiGet_ProjectList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/task_insert"))
-        return ApiPost_InsertTask(Ctx);
-    else if (TKK_HIT_PATH("/api/task_delete"))
-        return ApiPost_DeleteTask(Ctx);
-    else if (TKK_HIT_PATH("/api/task_update"))
-        return ApiPost_UpdateTask(Ctx);
-    else if (TKK_HIT_PATH("/api/task_list"))
-        return ApiGet_TaskList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/task_comm_insert"))
-        return ApiPost_InsertTaskComment(Ctx);
-    else if (TKK_HIT_PATH("/api/task_comm_delete"))
-        return ApiPost_DeleteTaskComment(Ctx);
-    else if (TKK_HIT_PATH("/api/task_comm_update"))
-        return ApiPost_UpdateTaskComment(Ctx);
-    else if (TKK_HIT_PATH("/api/task_comm_list"))
-        return ApiGet_TaskCommentList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/task_log"))
-        return ApiGet_TaskLogList(Ctx);
-    else if (TKK_HIT_PATH("/api/task_relation_insert"))
-        return ApiPost_InsertTaskRelation(Ctx);
-    else if (TKK_HIT_PATH("/api/task_relation_delete"))
-        return ApiPost_DeleteTaskRelation(Ctx);
-    else if (TKK_HIT_PATH("/api/task_relation"))
-        return ApiGet_TaskRelationList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/page_group_insert"))
-        return ApiPost_InsertPageGroup(Ctx);
-    else if (TKK_HIT_PATH("/api/page_group_delete"))
-        return ApiPost_DeletePageGroup(Ctx);
-    else if (TKK_HIT_PATH("/api/page_group_update"))
-        return ApiPost_UpdatePageGroup(Ctx);
-    else if (TKK_HIT_PATH("/api/page_group_list"))
-        return ApiGet_PageGroupList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/page_insert"))
-        return ApiPost_InsertPage(Ctx);
-    else if (TKK_HIT_PATH("/api/page_delete"))
-        return ApiPost_DeletePage(Ctx);
-    else if (TKK_HIT_PATH("/api/page_update"))
-        return ApiPost_UpdatePage(Ctx);
-    else if (TKK_HIT_PATH("/api/page_list"))
-        return ApiGet_PageList(Ctx);
-
-    else if (TKK_HIT_PATH("/api/page_save"))
-        return ApiPost_PageSave(Ctx);
-    else if (TKK_HIT_PATH("/api/page_load"))
-        return ApiGet_PageLoad(Ctx);
-
-    else if (TKK_HIT_PATH("/api/page_version_list"))
-        return ApiGet_PageVersionList(Ctx);
-    else if (TKK_HIT_PATH("/api/page_version_content"))
-        return ApiGet_PageVersionContent(Ctx);
-
-    else if (TKK_HIT_PATH("/api/login"))
-        return ApiGet_Login(Ctx);
-    else if (TKK_HIT_PATH("/api/register"))
-        return ApiPost_Register(Ctx);
-
-    else if (TKK_HIT_PATH("/api/search"))
-        return ApiGet_SearchEntity(Ctx);
-
-    else
-        return ApiGet_ResourceFile(Ctx);
+    const auto it = ApiMap.find(rsPathLower.ToStringView());
+    if (it != ApiMap.end())
+        return it->second(Ctx);
+    return ApiGet_ResourceFile(Ctx);
 
 #undef TKK_HIT_PATH
     return HPR_OK;
