@@ -34,15 +34,15 @@ static void AwGetTaskLogList(const API_CTX& Ctx) noexcept
     if (iTaskId != DbIdInvalid)
     {
         constexpr char Sql[]{ R"(
-SELECT t.field_name, t.old_value, t.new_value, t.change_at
+SELECT t.field_name, t.old_value, t.new_value, t.change_at, t.user_id, u.user_name
 FROM TaskLog AS t
-JOIN Acl AS a
-ON a.entity_id = t.task_id
+JOIN Acl AS a ON a.entity_id = t.task_id
+LEFT JOIN User AS u ON u.user_id = t.user_id
 WHERE
     t.task_id = ? AND
     a.user_id = ? AND
     (a.access & ?) != 0
-ORDER BY t.task_id ASC
+ORDER BY t.change_at DESC
 LIMIT ? OFFSET ?;
 )" };
         sqlite3_stmt* pStmt;
@@ -67,6 +67,8 @@ LIMIT ? OFFSET ?;
                 "old_value", SuColumnStringView(pStmt, 1),
                 "new_value", SuColumnStringView(pStmt, 2),
                 "change_at", sqlite3_column_int64(pStmt, 3),
+                "user_id", sqlite3_column_int(pStmt, 4),
+                "user_name", SuColumnStringView(pStmt, 5)
             };
             Arr.ArrPushBack(Obj);
         }

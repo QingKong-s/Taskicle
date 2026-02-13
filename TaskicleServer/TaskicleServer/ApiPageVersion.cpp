@@ -341,8 +341,11 @@ static void AwLoadPage(const API_CTX& Ctx) noexcept
             FILE_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT);
         if (!NT_SUCCESS(nts))
         {
-            pHdr->r = ApiResult::File;
-            pHdr->r2 = nts;
+            if (nts != STATUS_OBJECT_NAME_NOT_FOUND)
+            {
+                pHdr->r = ApiResult::File;
+                pHdr->r2 = nts;
+            }
             goto Exit;
         }
         if (bTemp)
@@ -360,7 +363,7 @@ static void AwLoadPage(const API_CTX& Ctx) noexcept
         eck::CRefBin rbFile{};
         nts = DiffLoadFile(TxFile, Dir.Get(),
             bTemp ? L"draft.txt"sv : L"content.txt"sv, rbFile);
-        if (!NT_SUCCESS(nts))
+        if (!NT_SUCCESS(nts) && nts != STATUS_OBJECT_NAME_NOT_FOUND)
         {
             pHdr->r = ApiResult::File;
             pHdr->r2 = nts;

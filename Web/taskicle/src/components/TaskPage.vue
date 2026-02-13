@@ -114,7 +114,7 @@ function onDrag(movementX) {
   leftWidth.value = Math.max(200, leftWidth.value + movementX);
 }
 
-async function fetchTasksForProject(projId, isAppend = false) {
+async function fetchTasksForProject(projId, isAppend = false, preserveSelection = false) {
   if (!projId) {
     tableData.value = [];
     selectedTask.value = null;
@@ -144,7 +144,7 @@ async function fetchTasksForProject(projId, isAppend = false) {
         tableData.value.push(...items);
       } else {
         tableData.value = items;
-        handleDefaultSelection(items);
+        if (!preserveSelection) handleDefaultSelection(items);
       }
 
       if (items.length < pageSize) {
@@ -289,14 +289,15 @@ function onTaskUpdated(updated) {
 async function onTaskCreated(created) {
   const projId = parseInt(route.query.project)
   if (!projId) return
-  await fetchTasksForProject(projId)
+  // 先把选中项设为刚创建的任务，避免刷新列表时因为默认选择逻辑导致组件被销毁再重建
+  selectedTask.value = created
+  await fetchTasksForProject(projId, false, true)
   const id = created.task_id || created.id
   const found = tableData.value.find(it => (it.task_id || it.id) === id)
-  selectedTask.value = found || null
+  selectedTask.value = found || selectedTask.value
 }
 
-const tableData = ref([
-]);
+const tableData = ref([]);
 </script>
 
 <style scoped>

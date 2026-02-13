@@ -205,7 +205,6 @@ const PERM_CONFIG = {
     { name: '删除', bit: DbAccess.Delete },
   ],
   Task: [
-    { name: '查看', bit: DbAccess.ReadContent },
     { name: '修改', bit: DbAccess.WriteContent },
     { name: '评论', bit: DbAccess.WriteComment },
     { name: '删除', bit: DbAccess.Delete },

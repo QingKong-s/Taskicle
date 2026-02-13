@@ -115,7 +115,9 @@ CREATE TABLE IF NOT EXISTS TaskLog (
     old_value       TEXT        NOT NULL,
     new_value       TEXT        NOT NULL,
     change_at       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsecond') * 1000 AS INTEGER)),
-    FOREIGN KEY(task_id) REFERENCES Task(task_id)
+    user_id         INTEGER     NOT NULL,
+    FOREIGN KEY(task_id) REFERENCES Task(task_id),
+    FOREIGN KEY(user_id) REFERENCES User(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS TaskComment (
@@ -149,22 +151,26 @@ CREATE INDEX IF NOT EXISTS IdxTaskRelation_TaskRelationId ON TaskRelation(task_i
         sqlite3_free(pszErrMsg);
         return r;
     }
-
+    return r;
+}
+static int DbpTriggerCreateTask(sqlite3* pSqlite) noexcept
+{
+    char* pszErrMsg{};
     auto FnCreateTrigger = [&](std::string_view svTriggerName, std::string_view svFieldName) -> int
         {
             if (DbpIsTriggerExists(pSqlite, svTriggerName))
                 return SQLITE_OK;
             eck::CRefStrA rsSql{};
             rsSql
-                .PushBack("CREATE TRIGGER IF NOT EXISTS "sv).PushBack(svTriggerName)
+                .PushBack("CREATE TEMP TRIGGER IF NOT EXISTS "sv).PushBack(svTriggerName)
                 .PushBack(" AFTER UPDATE ON Task WHEN OLD."sv)
                 .PushBack(svFieldName).PushBack(" IS NOT NEW."sv).PushBack(svFieldName)
                 .PushBack(" BEGIN "sv)
-                .PushBack("INSERT INTO TaskLog(task_id, field_name, old_value, new_value)"sv)
+                .PushBack("INSERT INTO TaskLog(task_id, field_name, old_value, new_value, user_id)"sv)
                 .PushBack("VALUES (OLD.task_id, '"sv).PushBack(svFieldName)
                 .PushBack("', OLD."sv).PushBack(svFieldName)
                 .PushBack(", NEW."sv).PushBack(svFieldName)
-                .PushBack("); END;"sv);
+                .PushBack(", (SELECT user_id FROM TempUserId)); END;"sv);
             const auto r = sqlite3_exec(pSqlite, rsSql.Data(), nullptr, nullptr, &pszErrMsg);
             if (r != SQLITE_OK)
             {
@@ -173,25 +179,50 @@ CREATE INDEX IF NOT EXISTS IdxTaskRelation_TaskRelationId ON TaskRelation(task_i
             }
             return r;
         };
-
+    int r;
     if ((r = FnCreateTrigger("TrUpdateTask_ProjectId"sv, "project_id"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_TaskName"sv, "task_name"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_Status"sv, "status"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_Priority"sv, "priority"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_Description"sv, "description"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_ExpireAt"sv, "expire_at"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
+    }
     if ((r = FnCreateTrigger("TrUpdateTask_AssigneeId"sv, "assignee_id"sv)) != SQLITE_OK)
+    {
+        LOGE << "Sqlite error: " << r << "(" << pszErrMsg << ")";
+        sqlite3_free(pszErrMsg);
         return r;
-
+    }
     return SQLITE_OK;
-
-    return r;
 }
 static int DbpTableCreatePageGroup(sqlite3* pSqlite) noexcept
 {
@@ -339,16 +370,23 @@ UNION ALL
     return r;
 }
 
+static int DbpOpen(_Out_ sqlite3*& pSqlite) noexcept
+{
+    int r = sqlite3_open16(s_DbFilePath.Data(), &pSqlite);
+    if (r != SQLITE_OK)
+        LOGE << "Sqlite open failed: " << r;
+    else
+    {
+        sqlite3_busy_timeout(pSqlite, 6000);
+        r = DbpTriggerCreateTask(pSqlite);
+    }
+    return r;
+}
 int DbOpenFirst(std::wstring_view svFile, _Out_ sqlite3*& pSqlite) noexcept
 {
     EckAssert(s_DbFilePath.IsEmpty());
     s_DbFilePath = svFile;
-    const int r = sqlite3_open16(svFile.data(), &pSqlite);
-    if (r != SQLITE_OK)
-        LOGE << "Sqlite open failed: " << r;
-    else
-        sqlite3_busy_timeout(pSqlite, 6000);
-    return r;
+    return DbpOpen(pSqlite);
 }
 int DbOpen(_Out_ sqlite3*& pSqlite) noexcept
 {
@@ -361,12 +399,7 @@ int DbOpen(_Out_ sqlite3*& pSqlite) noexcept
             return SQLITE_OK;
         }
     }
-    const int r = sqlite3_open16(s_DbFilePath.Data(), &pSqlite);
-    if (r != SQLITE_OK)
-        LOGE << "Sqlite open failed: " << r;
-    else
-        sqlite3_busy_timeout(pSqlite, 6000);
-    return r;
+    return DbpOpen(pSqlite);
 }
 void DbClose(sqlite3* pSqlite) noexcept
 {

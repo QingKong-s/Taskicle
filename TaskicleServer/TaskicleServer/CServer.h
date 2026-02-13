@@ -1,9 +1,4 @@
 ﻿#pragma once
-enum class DbStmtCache
-{
-
-};
-
 struct ConnectionData final
 {
     LONG cRef{ 1 };

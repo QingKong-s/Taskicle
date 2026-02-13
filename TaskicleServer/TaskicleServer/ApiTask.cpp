@@ -221,6 +221,34 @@ Exit:
 }
 TKK_API_DEF_ENTRY(ApiPost_DeleteTask, AwDeleteTask)
 
+// 返回sqlite错误码
+static int DbSetCurrentUserId(const API_CTX& Ctx, int iUserId) noexcept
+{
+    int r;
+    r = sqlite3_exec(Ctx.pExtra->pSqlite,
+        "CREATE TEMP TABLE IF NOT EXISTS main.TempUserId(user_id INTEGER);",
+        nullptr, nullptr, nullptr);
+    if (r != SQLITE_OK)
+        return r;
+    r = sqlite3_exec(Ctx.pExtra->pSqlite,
+        "DELETE FROM main.TempUserId;",
+        nullptr, nullptr, nullptr);
+    if (r != SQLITE_OK)
+        return r;
+
+    sqlite3_stmt* pStmt;
+    r = sqlite3_prepare_v3(Ctx.pExtra->pSqlite,
+        "INSERT INTO main.TempUserId(user_id) VALUES (?);", -1, 0, &pStmt, nullptr);
+    if (r != SQLITE_OK)
+        return r;
+    sqlite3_bind_int(pStmt, 1, iUserId);
+    r = sqlite3_step(pStmt);
+    sqlite3_finalize(pStmt);
+    if (r == SQLITE_DONE)
+        r = SQLITE_OK;
+    return r;
+}
+
 // Task: WriteContent
 static void AwUpdateTask(const API_CTX& Ctx) noexcept
 {
@@ -242,10 +270,18 @@ static void AwUpdateTask(const API_CTX& Ctx) noexcept
             goto Exit;
         }
 
-        if (!AclDbCheckCurrentUserAccess(Ctx,
+        const auto iUserId = CkDbGetCurrentUser(Ctx);
+        if (!AclDbCheckAccess(Ctx, iUserId,
             ValId.GetInt(), DbAccess::WriteContent, r))
         {
             rApi = ApiResult::AccessDenied;
+            goto Exit;
+        }
+
+        r = DbSetCurrentUserId(Ctx, iUserId);
+        if (r != SQLITE_OK)
+        {
+            pszErrMsg = sqlite3_errmsg(Ctx.pExtra->pSqlite);
             goto Exit;
         }
 
@@ -403,7 +439,7 @@ SELECT
     t.expire_at, t.assignee_id, t.creator_id
 FROM Task AS t
 JOIN Acl AS a
-ON a.entity_id = t.task_id
+ON a.entity_id = t.project_id
 WHERE
     t.project_id = ? AND
     a.user_id = ? AND

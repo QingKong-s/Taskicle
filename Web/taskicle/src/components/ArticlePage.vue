@@ -214,6 +214,10 @@ async function loadPage(item) {
     const parsed = parsePageBuffer(res.data)
     if (parsed.r) {
       showErrorMessage(ElMessage, { r: parsed.r, r2: parsed.r2, err_msg: '' })
+      noAutoSave.value = true
+      isUnsaved.value = false
+      editorContent.value = ''
+      loadedIsDraft.value = false
     }
     else {
       loadedIsDraft.value = !!parsed.bTemp
